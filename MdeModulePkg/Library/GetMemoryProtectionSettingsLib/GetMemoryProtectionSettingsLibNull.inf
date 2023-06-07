@@ -1,0 +1,25 @@
+## @file
+# NULL implementation for GetMemoryProtectionSettingsLib
+#
+# Copyright (c) Microsoft Corporation.
+# SPDX-License-Identifier: BSD-2-Clause-Patent
+##
+
+[Defines]
+  INF_VERSION                    = 0x00010005
+  BASE_NAME                      = GetMemoryProtectionSettingsLibNull
+  FILE_GUID                      = C21A27EE-37DD-4024-8EDA-8BF5088C8CB1
+  MODULE_TYPE                    = BASE
+  VERSION_STRING                 = 1.0
+  LIBRARY_CLASS                  = GetMemoryProtectionSettingsLib
+
+#
+#  VALID_ARCHITECTURES           = IA32 X64 AARCH64
+#
+
+[Sources]
+  GetMemoryProtectionSettingsLibNull.c
+
+[Packages]
+  MdePkg/MdePkg.dec
+  MdeModulePkg/MdeModulePkg.dec

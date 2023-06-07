@@ -164,6 +164,14 @@
   #
   VariableFlashInfoLib|Include/Library/VariableFlashInfoLib.h
 
+  ## @libraryclass Provides a global for consuming memory protection settings
+  #
+  GetMemoryProtectionSettingsLib|Include/Library/GetMemoryProtectionSettingsLib.h
+
+  ## @libraryclass Library for creating the memory protection settings HOB
+  #
+  SetMemoryProtectionSettingsLib|Include/Library/SetMemoryProtectionSettingsLib.h
+
 [Guids]
   ## MdeModule package token space guid
   # Include/Guid/MdeModulePkgTokenSpace.h
