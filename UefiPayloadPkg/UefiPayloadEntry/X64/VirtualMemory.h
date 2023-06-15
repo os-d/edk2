@@ -265,28 +265,17 @@ AsmGetVectorTemplatInfo (
   );
 
 /**
-  Clear legacy memory located at the first 4K-page.
+  Returns TRUE if the NULL page has not been allocated.
 
-  This function traverses the whole HOB list to check if memory from 0 to 4095
-  exists and has not been allocated, and then clear it if so.
+  @param HobStart                  The start of HobList passed to DxeCore.
 
-  @param HobStart         The start of HobList passed to DxeCore.
+  @retval TRUE                     NULL page is unallocated
+  @retval FALSE                    NULL page cannot be allocated
 
-**/
-VOID
-ClearFirst4KPage (
-  IN  VOID  *HobStart
-  );
-
-/**
-  Return configure status of NULL pointer detection feature.
-
-  @return TRUE   NULL pointer detection feature is enabled
-  @return FALSE  NULL pointer detection feature is disabled
 **/
 BOOLEAN
-IsNullDetectionEnabled (
-  VOID
+CanAllocateNullPage (
+  IN  VOID  *HobStart
   );
 
 /**

@@ -30,6 +30,7 @@
 #include <Guid/MemoryMapInfoGuid.h>
 #include <Guid/AcpiBoardInfoGuid.h>
 #include <Guid/GraphicsInfoHob.h>
+#include <Guid/DxeMemoryProtectionSettings.h>
 #include <UniversalPayload/SmbiosTable.h>
 #include <UniversalPayload/AcpiTable.h>
 #include <UniversalPayload/UniversalPayload.h>
@@ -50,6 +51,8 @@
 #define E820_DISABLED   6
 #define E820_PMEM       7
 #define E820_UNDEFINED  8
+
+extern DXE_MEMORY_PROTECTION_SETTINGS  mDxeMps;
 
 /**
   Auto-generated function that calls the library constructors for all of the module's
@@ -214,6 +217,18 @@ FvFindFileByTypeGuid (
 ACPI_BOARD_INFO *
 BuildHobFromAcpi (
   IN   UINT64  AcpiTableBase
+  );
+
+/**
+  Populates mDxeMps global with the data present in the memory
+  protection HOB entry if it exists.
+
+  @param[in] DxeMps  Pointer to the DXE memory protection settings.
+**/
+VOID
+EFIAPI
+PopulateDxeMemoryProtectionSettings (
+  IN DXE_MEMORY_PROTECTION_SETTINGS  *DxeMps
   );
 
 #endif

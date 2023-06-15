@@ -8,6 +8,8 @@
 
 #include "UefiPayloadEntry.h"
 
+DXE_MEMORY_PROTECTION_SETTINGS  mDxeMps;
+
 /**
   Allocate pages for code.
 
@@ -358,4 +360,28 @@ UniversalLoadDxeCore (
   BuildModuleHob (&FileHeader->Name, ImageAddress, EFI_SIZE_TO_PAGES ((UINT32)ImageSize) * EFI_PAGE_SIZE, *DxeCoreEntryPoint);
 
   return EFI_SUCCESS;
+}
+
+/**
+  Populates mDxeMps global with the data present in the memory
+  protection HOB entry if it exists.
+
+  @param[in] DxeMps  Pointer to the DXE memory protection settings.
+**/
+VOID
+EFIAPI
+PopulateDxeMemoryProtectionSettings (
+  IN DXE_MEMORY_PROTECTION_SETTINGS  *DxeMps
+  )
+{
+  VOID  *Ptr;
+
+  Ptr = GetFirstGuidHob (&gDxeMemoryProtectionSettingsGuid);
+
+  // Cache the Memory Protection Settings HOB entry
+  if ((Ptr != NULL) && DXE_MPS_IS_STRUCT_VALID (GET_GUID_HOB_DATA (Ptr))) {
+    CopyMem (DxeMps, GET_GUID_HOB_DATA (Ptr), sizeof (DXE_MEMORY_PROTECTION_SETTINGS));
+  } else {
+    ZeroMem (DxeMps, sizeof (DXE_MEMORY_PROTECTION_SETTINGS));
+  }
 }
