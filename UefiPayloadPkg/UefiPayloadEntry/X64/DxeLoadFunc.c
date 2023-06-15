@@ -17,6 +17,8 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 #include "UefiPayloadEntry.h"
 #define STACK_SIZE  0x20000
 
+extern MEMORY_PROTECTION_SETTINGS  mMps;
+
 /**
    Transfers control to DxeCore.
 
@@ -40,12 +42,13 @@ HandOffToDxeCore (
   VOID   *GhcbBase;
   UINTN  GhcbSize;
 
-  //
-  // Clear page 0 and mark it as allocated if NULL pointer detection is enabled.
-  //
-  if (IsNullDetectionEnabled ()) {
-    ClearFirst4KPage (HobList.Raw);
-    BuildMemoryAllocationHob (0, EFI_PAGES_TO_SIZE (1), EfiBootServicesData);
+  GetCurrentMemoryProtectionSettings (&mMps);
+
+  if (mMps.Dxe.NullPointerDetection.Enabled) {
+    ASSERT (CanAllocateNullPage (HobList.Raw));
+    // Clear NULL page and mark it as allocated for NULL detection
+    SetMem (NULL, EFI_PAGE_SIZE, (UINTN)NULL);
+    BuildMemoryAllocationHob ((UINTN)NULL, EFI_PAGES_TO_SIZE (1), EfiBootServicesData);
   }
 
   //
@@ -78,17 +81,9 @@ HandOffToDxeCore (
                    (EFI_PHYSICAL_ADDRESS)(UINTN)GhcbBase,
                    GhcbSize
                    );
-  } else {
-    //
-    // Set NX for stack feature also require PcdDxeIplBuildPageTables be TRUE
-    // for the DxeIpl and the DxeCore are both X64.
-    //
-    ASSERT (PcdGetBool (PcdSetNxForStack) == FALSE);
-    ASSERT (PcdGetBool (PcdCpuStackGuard) == FALSE);
-  }
-
-  if (FeaturePcdGet (PcdDxeIplBuildPageTables)) {
     AsmWriteCr3 (PageTables);
+  } else {
+    ASSERT (!IsDxeMemoryProtectionActive () && !IsMmMemoryProtectionActive ());
   }
 
   //

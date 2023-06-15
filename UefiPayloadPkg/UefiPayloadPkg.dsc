@@ -207,6 +207,7 @@
   OpensslLib|CryptoPkg/Library/OpensslLib/OpensslLib.inf
   RngLib|MdePkg/Library/BaseRngLib/BaseRngLib.inf
   HobLib|UefiPayloadPkg/Library/DxeHobLib/DxeHobLib.inf
+  GetMemoryProtectionSettingsLib|MdeModulePkg/Library/GetMemoryProtectionSettingsLib/GetMemoryProtectionSettingsLibNull.inf
 
   #
   # UEFI & PI
