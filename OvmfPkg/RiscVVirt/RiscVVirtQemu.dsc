@@ -126,6 +126,7 @@
   PciExpressLib|OvmfPkg/Library/BaseCachingPciExpressLib/BaseCachingPciExpressLib.inf
 
 #!include NetworkPkg/NetworkBuildOptions.dsc.inc
+!include OvmfPkg/Include/Dsc/MemoryProtectionLibraries.dsc.inc
 
 ################################################################################
 #

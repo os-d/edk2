@@ -45,6 +45,8 @@
   gEfiMemoryTypeInformationGuid
   gFdtHobGuid
   gUefiOvmfPkgPlatformInfoGuid
+  gDxeMemoryProtectionSettingsGuid
+  gMmMemoryProtectionSettingsGuid
 
 [LibraryClasses]
   BaseLib

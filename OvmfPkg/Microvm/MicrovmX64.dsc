@@ -452,6 +452,8 @@
   PciPcdProducerLib|OvmfPkg/Fdt/FdtPciPcdProducerLib/FdtPciPcdProducerLib.inf
   PciExpressLib|OvmfPkg/Library/BaseCachingPciExpressLib/BaseCachingPciExpressLib.inf
 
+!include OvmfPkg/Include/Dsc/MemoryProtectionLibraries.dsc.inc
+
 ################################################################################
 #
 # Pcd Section - list of all EDK II PCD Entries defined by this Platform.

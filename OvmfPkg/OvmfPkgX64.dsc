@@ -484,6 +484,8 @@
 !endif
   PciLib|OvmfPkg/Library/DxePciLibI440FxQ35/DxePciLibI440FxQ35.inf
 
+!include OvmfPkg/Include/Dsc/MemoryProtectionLibraries.dsc.inc
+
 ################################################################################
 #
 # Pcd Section - list of all EDK II PCD Entries defined by this Platform.
