@@ -709,6 +709,27 @@ InitializeMpExceptionStackSwitchHandlers (
 }
 
 /**
+  Checks if the memory protection HOB entry is available and if stack guard is enabled.
+
+  @param Context The unit test context
+**/
+UNIT_TEST_STATUS
+EFIAPI
+IsStackGuardEnabled (
+  IN UNIT_TEST_CONTEXT  Context
+  )
+{
+  VOID  *Ptr;
+
+  Ptr = GetFirstGuidHob (&gDxeMemoryProtectionSettingsGuid);
+  UT_ASSERT_NOT_NULL (Ptr);
+  UT_ASSERT_TRUE (DXE_MPS_IS_STRUCT_VALID (GET_GUID_HOB_DATA (Ptr)));
+  UT_ASSERT_TRUE (((DXE_MEMORY_PROTECTION_SETTINGS *)GET_GUID_HOB_DATA (Ptr))->CpuStackGuardEnabled);
+
+  return UNIT_TEST_PASSED;
+}
+
+/**
   Test if stack overflow is captured by CpuStackGuard in both Bsp and AP.
 
   @param[in]  Context    [Optional] An optional parameter that enables:
@@ -742,10 +763,6 @@ TestCpuStackGuardInBspAndAp (
   UINTN                           BspProcessorNum;
   VOID                            *NewIdtr;
   UINTN                           *CpuStackBaseBuffer;
-
-  if (!PcdGetBool (PcdCpuStackGuard)) {
-    return UNIT_TEST_PASSED;
-  }
 
   //
   // Get MP Service Protocol
@@ -846,7 +863,7 @@ AddCommonTestCase (
   AddTestCase (CpuExceptionLibUnitTestSuite, "Check if exception handler can be registered/unregistered for GP and PF", "TestRegisterHandlerForGPAndPF", TestRegisterHandlerForGPAndPF, NULL, NULL, NULL);
 
   AddTestCase (CpuExceptionLibUnitTestSuite, "Check if Cpu Context is consistent before and after exception.", "TestCpuContextConsistency", TestCpuContextConsistency, NULL, NULL, NULL);
-  AddTestCase (CpuExceptionLibUnitTestSuite, "Check if stack overflow is captured by CpuStackGuard in Bsp and AP", "TestCpuStackGuardInBspAndAp", TestCpuStackGuardInBspAndAp, NULL, NULL, NULL);
+  AddTestCase (CpuExceptionLibUnitTestSuite, "Check if stack overflow is captured by CpuStackGuard in Bsp and AP", "TestCpuStackGuardInBspAndAp", TestCpuStackGuardInBspAndAp, IsStackGuardEnabled, NULL, NULL);
 
   return EFI_SUCCESS;
 }

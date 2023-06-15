@@ -50,11 +50,13 @@
   PeiServicesTablePointerLib
 
 [Pcd]
-  gEfiMdeModulePkgTokenSpaceGuid.PcdCpuStackGuard   ## CONSUMES
   gUefiCpuPkgTokenSpaceGuid.PcdCpuApStackSize       ## CONSUMES
 
 [Ppis]
   gEdkiiPeiMpServices2PpiGuid                       ## CONSUMES
+
+[Guids]
+  gDxeMemoryProtectionSettingsGuid                  ## CONSUMES
 
 [Depex]
   gEdkiiPeiMpServices2PpiGuid AND
