@@ -932,9 +932,7 @@ SmiPFHandler (
     //
     // If NULL pointer was just accessed
     //
-    if (((PcdGet8 (PcdNullPointerDetectionPropertyMask) & BIT1) != 0) &&
-        (PFAddress < EFI_PAGE_SIZE))
-    {
+    if (gMps.Mm.NullPointerDetection.Enabled && (PFAddress < EFI_PAGE_SIZE)) {
       DumpCpuContext (InterruptType, SystemContext);
       DEBUG ((DEBUG_ERROR, "!!! NULL pointer access !!!\n"));
       DEBUG_CODE (
