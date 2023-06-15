@@ -38,6 +38,7 @@
 #include <IndustryStandard/QemuCpuHotplug.h>
 #include <Library/MemEncryptSevLib.h>
 #include <OvmfPlatforms.h>
+#include <Library/SetMemoryProtectionSettingsLib.h>
 
 #include "Platform.h"
 
@@ -304,8 +305,19 @@ InitializePlatform (
   IN CONST EFI_PEI_SERVICES     **PeiServices
   )
 {
-  EFI_HOB_PLATFORM_INFO  *PlatformInfoHob;
-  EFI_STATUS             Status;
+  EFI_HOB_PLATFORM_INFO           *PlatformInfoHob;
+  EFI_STATUS                      Status;
+  DXE_MEMORY_PROTECTION_SETTINGS  DxeSettings;
+  MM_MEMORY_PROTECTION_SETTINGS   MmSettings;
+
+  DxeSettings = DxeMemoryProtectionProfiles[DxeMemoryProtectionSettingsDebug].Settings;
+  MmSettings  = MmMemoryProtectionProfiles[MmMemoryProtectionSettingsOff].Settings;
+
+  DxeSettings.NullPointerDetection.DisableEndOfDxe = TRUE;
+  MmSettings.NullPointerDetection.Enabled          = TRUE;
+
+  SetDxeMemoryProtectionSettings (&DxeSettings, DxeMemoryProtectionSettingsDebug);
+  SetMmMemoryProtectionSettings (&MmSettings, MmMemoryProtectionSettingsOff);
 
   DEBUG ((DEBUG_INFO, "Platform PEIM Loaded\n"));
   PlatformInfoHob = BuildPlatformInfoHob ();

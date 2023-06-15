@@ -231,6 +231,18 @@
   DebugLib|OvmfPkg/Library/PlatformDebugLibIoPort/PlatformDebugLibIoPort.inf
 !endif
 
+#
+# Memory Protection Libraries
+#
+[LibraryClasses.common]
+  SetMemoryProtectionSettingsLib|MdeModulePkg/Library/SetMemoryProtectionSettingsLib/SetMemoryProtectionSettingsLib.inf
+
+[LibraryClasses.common.SMM_CORE, LibraryClasses.common.DXE_SMM_DRIVER, LibraryClasses.common.MM_CORE_STANDALONE, LibraryClasses.common.MM_STANDALONE]
+  GetMemoryProtectionSettingsLib|MdeModulePkg/Library/GetMemoryProtectionSettingsLib/GetMmMemoryProtectionSettingsLib.inf
+
+[LibraryClasses.common.DXE_CORE, LibraryClasses.common.DXE_DRIVER, LibraryClasses.common.UEFI_APPLICATION, LibraryClasses.common.UEFI_DRIVER]
+  GetMemoryProtectionSettingsLib|MdeModulePkg/Library/GetMemoryProtectionSettingsLib/GetDxeMemoryProtectionSettingsLib.inf
+
 [LibraryClasses.common]
   BaseCryptLib|CryptoPkg/Library/BaseCryptLib/BaseCryptLib.inf
   CcExitLib|UefiCpuPkg/Library/CcExitLibNull/CcExitLibNull.inf
