@@ -943,8 +943,9 @@ SmmFreePages (
     return EFI_NOT_FOUND;
   }
 
-  IsGuarded = IsHeapGuardEnabled () && IsMemoryGuarded (Memory);
-  Status    = SmmInternalFreePages (Memory, NumberOfPages, IsGuarded);
+  IsGuarded = (IS_MM_PAGE_GUARD_ACTIVE || IS_MM_POOL_GUARD_ACTIVE) &&
+              IsMemoryGuarded (Memory);
+  Status = SmmInternalFreePages (Memory, NumberOfPages, IsGuarded);
   if (!EFI_ERROR (Status)) {
     SmmCoreUpdateProfile (
       (EFI_PHYSICAL_ADDRESS)(UINTN)RETURN_ADDRESS (0),

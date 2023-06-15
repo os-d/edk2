@@ -135,9 +135,8 @@ Create4GPageTablesIa32Pae (
     PageDirectoryPointerEntry->Bits.Present = 1;
 
     for (IndexOfPageDirectoryEntries = 0; IndexOfPageDirectoryEntries < 512; IndexOfPageDirectoryEntries++, PageDirectoryEntry++, PhysicalAddress += SIZE_2MB) {
-      if (  (IsNullDetectionEnabled () && (PhysicalAddress == 0))
-         || (  (PhysicalAddress < StackBase + StackSize)
-            && ((PhysicalAddress + SIZE_2MB) > StackBase)))
+      if (((mMps.Dxe.NullPointerDetection.Enabled) && (PhysicalAddress == (UINTN)NULL)) ||
+          ((PhysicalAddress < StackBase + StackSize) && ((PhysicalAddress + SIZE_2MB) > StackBase)))
       {
         //
         // Need to split this 2M page that covers stack range.
@@ -200,41 +199,6 @@ IsIa32PaeSupport (
 }
 
 /**
-  The function will check if page table should be setup or not.
-
-  @retval TRUE      Page table should be created.
-  @retval FALSE     Page table should not be created.
-
-**/
-BOOLEAN
-ToBuildPageTable (
-  VOID
-  )
-{
-  if (!IsIa32PaeSupport ()) {
-    return FALSE;
-  }
-
-  if (IsNullDetectionEnabled ()) {
-    return TRUE;
-  }
-
-  if (PcdGet8 (PcdHeapGuardPropertyMask) != 0) {
-    return TRUE;
-  }
-
-  if (PcdGetBool (PcdCpuStackGuard)) {
-    return TRUE;
-  }
-
-  if (IsEnableNonExecNeeded ()) {
-    return TRUE;
-  }
-
-  return FALSE;
-}
-
-/**
    Transfers control to DxeCore.
 
    This function performs a CPU architecture specific operations to execute
@@ -265,12 +229,13 @@ HandOffToDxeCore (
   EFI_PEI_VECTOR_HANDOFF_INFO_PPI  *VectorHandoffInfoPpi;
   BOOLEAN                          BuildPageTablesIa32Pae;
 
-  //
-  // Clear page 0 and mark it as allocated if NULL pointer detection is enabled.
-  //
-  if (IsNullDetectionEnabled ()) {
-    ClearFirst4KPage (HobList.Raw);
-    BuildMemoryAllocationHob (0, EFI_PAGES_TO_SIZE (1), EfiBootServicesData);
+  GetCurrentMemoryProtectionSettings (&mMps);
+
+  if (mMps.Dxe.NullPointerDetection.Enabled) {
+    ASSERT (CanAllocateNullPage (HobList.Raw));
+    // Clear NULL page and mark it as allocated for NULL detectiond.
+    SetMem (NULL, EFI_PAGE_SIZE, (UINTN)NULL);
+    BuildMemoryAllocationHob ((UINTN)NULL, EFI_PAGES_TO_SIZE (1), EfiBootServicesData);
   }
 
   Status = PeiServicesAllocatePages (EfiBootServicesData, EFI_SIZE_TO_PAGES (STACK_SIZE), &BaseOfStack);
@@ -420,12 +385,14 @@ HandOffToDxeCore (
     TopOfStack = (EFI_PHYSICAL_ADDRESS)(UINTN)ALIGN_POINTER (TopOfStack, CPU_STACK_ALIGNMENT);
 
     PageTables             = 0;
-    BuildPageTablesIa32Pae = ToBuildPageTable ();
+    BuildPageTablesIa32Pae = PcdGetBool (PcdDxeIplBuildPageTables);
     if (BuildPageTablesIa32Pae) {
       PageTables = Create4GPageTablesIa32Pae (BaseOfStack, STACK_SIZE);
       if (IsEnableNonExecNeeded ()) {
         EnableExecuteDisableBit ();
       }
+    } else {
+      ASSERT (!IsDxeMemoryProtectionActive () && !IsMmMemoryProtectionActive ());
     }
 
     //
