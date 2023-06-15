@@ -152,10 +152,14 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
   }
 
 //
-// Memory type to guard (matching the related PCD definition)
+// Heap guard types
 //
-#define GUARD_HEAP_TYPE_PAGE  BIT2
-#define GUARD_HEAP_TYPE_POOL  BIT3
+typedef enum {
+  HeapGuardTypePage,
+  HeapGuardTypePool,
+  HeapGuardTypeFreed,
+  HeapGuardTypeMax
+} HEAP_GUARD_TYPE;
 
 //
 // Debug message level
@@ -360,16 +364,6 @@ SmmInternalFreePagesExWithGuard (
   IN EFI_PHYSICAL_ADDRESS  Memory,
   IN UINTN                 NumberOfPages,
   IN BOOLEAN               AddRegion
-  );
-
-/**
-  Check to see if the heap guard is enabled for page and/or pool allocation.
-
-  @return TRUE/FALSE.
-**/
-BOOLEAN
-IsHeapGuardEnabled (
-  VOID
   );
 
 /**

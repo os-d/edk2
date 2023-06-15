@@ -27,6 +27,7 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 #include <Guid/MemoryTypeInformation.h>
 #include <Guid/MemoryAllocationHob.h>
 #include <Guid/FirmwareFileSystem2.h>
+#include <Guid/DxeMemoryProtectionSettings.h>
 
 #include <Library/DebugLib.h>
 #include <Library/PeimEntryPoint.h>
@@ -46,10 +47,24 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 #define STACK_SIZE      0x20000
 #define BSP_STORE_SIZE  0x4000
 
+extern DXE_MEMORY_PROTECTION_SETTINGS  mDxeMps;
+
 //
 // This PPI is installed to indicate the end of the PEI usage of memory
 //
 extern CONST EFI_PEI_PPI_DESCRIPTOR  gEndOfPeiSignalPpi;
+
+/**
+  Populates mDxeMps global with the data present in the memory
+  protection HOB entry if it exists.
+
+  @param[in] DxeMps  Pointer to the DXE memory protection settings.
+**/
+VOID
+EFIAPI
+PopulateDxeMemoryProtectionSettings (
+  IN DXE_MEMORY_PROTECTION_SETTINGS  *DxeMps
+  );
 
 /**
    This function installs the PPIs that require permanent memory.

@@ -32,29 +32,34 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 PAGE_TABLE_POOL  *mPageTablePool = NULL;
 
 /**
-  Clear legacy memory located at the first 4K-page, if available.
-
-  This function traverses the whole HOB list to check if memory from 0 to 4095
-  exists and has not been allocated, and then clear it if so.
+  Returns TRUE if the NULL page has not been allocated.
 
   @param HobStart                  The start of HobList passed to DxeCore.
 
+  @retval TRUE                     NULL page is unallocated
+  @retval FALSE                    NULL page cannot be allocated
+
 **/
-VOID
-ClearFirst4KPage (
+BOOLEAN
+CanAllocateNullPage (
   IN  VOID  *HobStart
   )
 {
   EFI_PEI_HOB_POINTERS  RscHob;
   EFI_PEI_HOB_POINTERS  MemHob;
-  BOOLEAN               DoClear;
+  BOOLEAN               CanAllocate;
 
-  RscHob.Raw = HobStart;
-  MemHob.Raw = HobStart;
-  DoClear    = FALSE;
+  if (HobStart == NULL) {
+    ASSERT (HobStart != NULL);
+    return FALSE;
+  }
+
+  RscHob.Raw  = HobStart;
+  MemHob.Raw  = HobStart;
+  CanAllocate = FALSE;
 
   //
-  // Check if page 0 exists and free
+  // Check if page 0 exists and is free
   //
   while ((RscHob.Raw = GetNextHob (
                          EFI_HOB_TYPE_RESOURCE_DESCRIPTOR,
@@ -62,9 +67,9 @@ ClearFirst4KPage (
                          )) != NULL)
   {
     if ((RscHob.ResourceDescriptor->ResourceType == EFI_RESOURCE_SYSTEM_MEMORY) &&
-        (RscHob.ResourceDescriptor->PhysicalStart == 0))
+        (RscHob.ResourceDescriptor->PhysicalStart == (UINTN)NULL))
     {
-      DoClear = TRUE;
+      CanAllocate = TRUE;
       //
       // Make sure memory at 0-4095 has not been allocated.
       //
@@ -73,10 +78,10 @@ ClearFirst4KPage (
                              MemHob.Raw
                              )) != NULL)
       {
-        if (MemHob.MemoryAllocation->AllocDescriptor.MemoryBaseAddress
-            < EFI_PAGE_SIZE)
+        if ((MemHob.MemoryAllocation->AllocDescriptor.MemoryBaseAddress >= (UINTN)NULL) &&
+            (MemHob.MemoryAllocation->AllocDescriptor.MemoryBaseAddress < (UINTN)NULL + EFI_PAGE_SIZE))
         {
-          DoClear = FALSE;
+          CanAllocate = FALSE;
           break;
         }
 
@@ -89,27 +94,7 @@ ClearFirst4KPage (
     RscHob.Raw = GET_NEXT_HOB (RscHob);
   }
 
-  if (DoClear) {
-    DEBUG ((DEBUG_INFO, "Clearing first 4K-page!\r\n"));
-    SetMem (NULL, EFI_PAGE_SIZE, 0);
-  }
-
-  return;
-}
-
-/**
-  Return configure status of NULL pointer detection feature.
-
-  @return TRUE   NULL pointer detection feature is enabled
-  @return FALSE  NULL pointer detection feature is disabled
-
-**/
-BOOLEAN
-IsNullDetectionEnabled (
-  VOID
-  )
-{
-  return ((PcdGet8 (PcdNullPointerDetectionPropertyMask) & BIT0) != 0);
+  return CanAllocate;
 }
 
 /**
@@ -155,17 +140,7 @@ IsEnableNonExecNeeded (
   VOID
   )
 {
-  if (!IsExecuteDisableBitAvailable ()) {
-    return FALSE;
-  }
-
-  //
-  // XD flag (BIT63) in page table entry is only valid if IA32_EFER.NXE is set.
-  // Features controlled by Following PCDs need this feature to be enabled.
-  //
-  return (PcdGetBool (PcdSetNxForStack) ||
-          PcdGet64 (PcdDxeNxMemoryProtectionPolicy) != 0 ||
-          PcdGet32 (PcdImageProtectionPolicy) != 0);
+  return IsExecuteDisableBitAvailable ();
 }
 
 /**
@@ -210,17 +185,17 @@ ToSplitPageTable (
   IN UINTN                 GhcbSize
   )
 {
-  if (IsNullDetectionEnabled () && (Address == 0)) {
+  if (mDxeMps.NullPointerDetection.Enabled && (Address == (UINTN)NULL)) {
     return TRUE;
   }
 
-  if (PcdGetBool (PcdCpuStackGuard)) {
+  if (mDxeMps.CpuStackGuardEnabled) {
     if ((StackBase >= Address) && (StackBase < (Address + Size))) {
       return TRUE;
     }
   }
 
-  if (PcdGetBool (PcdSetNxForStack)) {
+  if (mDxeMps.StackExecutionProtectionEnabled) {
     if ((Address < StackBase + StackSize) && ((Address + Size) > StackBase)) {
       return TRUE;
     }
@@ -402,17 +377,17 @@ Split2MPageTo4K (
 
     PageTableEntry->Bits.ReadWrite = 1;
 
-    if ((IsNullDetectionEnabled () && (PhysicalAddress4K == 0)) ||
-        (PcdGetBool (PcdCpuStackGuard) && (PhysicalAddress4K == StackBase)))
+    if ((mDxeMps.NullPointerDetection.Enabled && (PhysicalAddress4K == (UINTN)NULL)) ||
+        (mDxeMps.CpuStackGuardEnabled && (PhysicalAddress4K == StackBase)))
     {
       PageTableEntry->Bits.Present = 0;
     } else {
       PageTableEntry->Bits.Present = 1;
     }
 
-    if (  PcdGetBool (PcdSetNxForStack)
-       && (PhysicalAddress4K >= StackBase)
-       && (PhysicalAddress4K < StackBase + StackSize))
+    if (mDxeMps.StackExecutionProtectionEnabled &&
+        (PhysicalAddress4K >= StackBase) &&
+        (PhysicalAddress4K < StackBase + StackSize))
     {
       //
       // Set Nx bit for stack.

@@ -181,7 +181,7 @@ CoreAddRange (
   // used for other purposes.
   //
   if ((Type == EfiConventionalMemory) && (Start == 0) && (End >= EFI_PAGE_SIZE - 1)) {
-    if ((PcdGet8 (PcdNullPointerDetectionPropertyMask) & BIT0) == 0) {
+    if (!gDxeMps.NullPointerDetection.Enabled) {
       SetMem ((VOID *)(UINTN)Start, EFI_PAGE_SIZE, 0);
     }
   }
@@ -918,7 +918,7 @@ CoreConvertPagesEx (
     // Add our new range in. Don't do this for freed pages if freed-memory
     // guard is enabled.
     //
-    if (!IsHeapGuardEnabled (GUARD_HEAP_TYPE_FREED) ||
+    if (!gDxeMps.HeapGuard.FreedMemoryGuardEnabled ||
         !ChangingType ||
         (MemType != EfiConventionalMemory))
     {

@@ -257,9 +257,13 @@ DxeMain (
   ASSERT_EFI_ERROR (Status);
 
   //
-  // Setup Stack Guard
+  // Get the memory protection HOB entry and setup stack guard
   //
-  if (PcdGetBool (PcdCpuStackGuard)) {
+  GuidHob = GetFirstGuidHob (&gDxeMemoryProtectionSettingsGuid);
+  if ((GuidHob != NULL) &&
+      DXE_MPS_IS_STRUCT_VALID (GET_GUID_HOB_DATA (GuidHob)) &&
+      ((DXE_MEMORY_PROTECTION_SETTINGS *)GET_GUID_HOB_DATA (GuidHob))->CpuStackGuardEnabled)
+  {
     Status = InitializeSeparateExceptionStacks (NULL, NULL);
     ASSERT_EFI_ERROR (Status);
   }

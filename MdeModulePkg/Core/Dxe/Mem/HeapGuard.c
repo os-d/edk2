@@ -553,7 +553,7 @@ UnsetGuardPage (
   // memory.
   //
   Attributes = 0;
-  if ((PcdGet64 (PcdDxeNxMemoryProtectionPolicy) & (1 << EfiConventionalMemory)) != 0) {
+  if (gDxeMps.ExecutionProtection.EnabledForType[EfiConventionalMemory]) {
     Attributes |= EFI_MEMORY_XP;
   }
 
@@ -577,7 +577,7 @@ UnsetGuardPage (
 
   @param[in]  MemoryType      Memory type to check.
   @param[in]  AllocateType    Allocation type to check.
-  @param[in]  PageOrPool      Indicate a page allocation or pool allocation.
+  @param[in]  HeapGuardType   Indicates the heap guard type.
 
 
   @return TRUE  The given type of memory should be guarded.
@@ -587,41 +587,32 @@ BOOLEAN
 IsMemoryTypeToGuard (
   IN EFI_MEMORY_TYPE    MemoryType,
   IN EFI_ALLOCATE_TYPE  AllocateType,
-  IN UINT8              PageOrPool
+  IN HEAP_GUARD_TYPE    HeapGuardType
   )
 {
-  UINT64  TestBit;
-  UINT64  ConfigBit;
-
   if (AllocateType == AllocateAddress) {
     return FALSE;
   }
 
-  if ((PcdGet8 (PcdHeapGuardPropertyMask) & PageOrPool) == 0) {
-    return FALSE;
-  }
-
-  if (PageOrPool == GUARD_HEAP_TYPE_POOL) {
-    ConfigBit = PcdGet64 (PcdHeapGuardPoolType);
-  } else if (PageOrPool == GUARD_HEAP_TYPE_PAGE) {
-    ConfigBit = PcdGet64 (PcdHeapGuardPageType);
-  } else {
-    ConfigBit = (UINT64)-1;
-  }
+  UINT32  TestMemoryType;
 
   if ((UINT32)MemoryType >= MEMORY_TYPE_OS_RESERVED_MIN) {
-    TestBit = BIT63;
+    TestMemoryType = OS_RESERVED_MPS_MEMORY_TYPE;
   } else if ((UINT32)MemoryType >= MEMORY_TYPE_OEM_RESERVED_MIN) {
-    TestBit = BIT62;
-  } else if (MemoryType < EfiMaxMemoryType) {
-    TestBit = LShiftU64 (1, MemoryType);
-  } else if (MemoryType == EfiMaxMemoryType) {
-    TestBit = (UINT64)-1;
+    TestMemoryType = OEM_RESERVED_MPS_MEMORY_TYPE;
+  } else if (MemoryType >= EfiMaxMemoryType) {
+    return TRUE;
   } else {
-    TestBit = 0;
+    TestMemoryType = MemoryType;
   }
 
-  return ((ConfigBit & TestBit) != 0);
+  if ((HeapGuardType == HeapGuardTypePool) && gDxeMps.HeapGuard.PoolGuardEnabled) {
+    return gDxeMps.PoolGuard.EnabledForType[TestMemoryType];
+  } else if ((HeapGuardType == HeapGuardTypePage) && gDxeMps.HeapGuard.PageGuardEnabled) {
+    return gDxeMps.PageGuard.EnabledForType[TestMemoryType];
+  }
+
+  return FALSE;
 }
 
 /**
@@ -641,7 +632,7 @@ IsPoolTypeToGuard (
   return IsMemoryTypeToGuard (
            MemoryType,
            AllocateAnyPages,
-           GUARD_HEAP_TYPE_POOL
+           HeapGuardTypePool
            );
 }
 
@@ -660,22 +651,7 @@ IsPageTypeToGuard (
   IN EFI_ALLOCATE_TYPE  AllocateType
   )
 {
-  return IsMemoryTypeToGuard (MemoryType, AllocateType, GUARD_HEAP_TYPE_PAGE);
-}
-
-/**
-  Check to see if the heap guard is enabled for page and/or pool allocation.
-
-  @param[in]  GuardType   Specify the sub-type(s) of Heap Guard.
-
-  @return TRUE/FALSE.
-**/
-BOOLEAN
-IsHeapGuardEnabled (
-  UINT8  GuardType
-  )
-{
-  return IsMemoryTypeToGuard (EfiMaxMemoryType, AllocateAnyPages, GuardType);
+  return IsMemoryTypeToGuard (MemoryType, AllocateType, HeapGuardTypePage);
 }
 
 /**
@@ -835,7 +811,7 @@ AdjustMemoryS (
   // indicated to put the pool near the Tail Guard, we need extra bytes to
   // make sure alignment of the returned pool address.
   //
-  if ((PcdGet8 (PcdHeapGuardPropertyMask) & BIT7) == 0) {
+  if (gDxeMps.HeapGuard.GuardAlignedToTail) {
     SizeRequested = ALIGN_VALUE (SizeRequested, 8);
   }
 
@@ -1019,7 +995,7 @@ AdjustPoolHeadA (
   IN UINTN                 Size
   )
 {
-  if ((Memory == 0) || ((PcdGet8 (PcdHeapGuardPropertyMask) & BIT7) != 0)) {
+  if ((Memory == 0) || (!gDxeMps.HeapGuard.GuardAlignedToTail)) {
     //
     // Pool head is put near the head Guard
     //
@@ -1045,7 +1021,7 @@ AdjustPoolHeadF (
   IN EFI_PHYSICAL_ADDRESS  Memory
   )
 {
-  if ((Memory == 0) || ((PcdGet8 (PcdHeapGuardPropertyMask) & BIT7) != 0)) {
+  if ((Memory == 0) || (!gDxeMps.HeapGuard.GuardAlignedToTail)) {
     //
     // Pool head is put near the head Guard
     //
@@ -1344,7 +1320,7 @@ GuardFreedPagesChecked (
   IN  UINTN                 Pages
   )
 {
-  if (IsHeapGuardEnabled (GUARD_HEAP_TYPE_FREED)) {
+  if (gDxeMps.HeapGuard.FreedMemoryGuardEnabled) {
     GuardFreedPages (BaseAddress, Pages);
   }
 }
@@ -1469,7 +1445,7 @@ MergeGuardPages (
   UINT64                Bitmap;
   INTN                  Pages;
 
-  if (!IsHeapGuardEnabled (GUARD_HEAP_TYPE_FREED) ||
+  if ((!gDxeMps.HeapGuard.FreedMemoryGuardEnabled) ||
       (MemoryMapEntry->Type >= EfiMemoryMappedIO))
   {
     return;
@@ -1525,7 +1501,7 @@ PromoteGuardedFreePages (
   UINT64                Bitmap;
   EFI_PHYSICAL_ADDRESS  Start;
 
-  if (!IsHeapGuardEnabled (GUARD_HEAP_TYPE_FREED)) {
+  if (!gDxeMps.HeapGuard.FreedMemoryGuardEnabled) {
     return FALSE;
   }
 
@@ -1594,18 +1570,21 @@ HeapGuardCpuArchProtocolNotify (
 {
   ASSERT (gCpu != NULL);
 
-  if (IsHeapGuardEnabled (GUARD_HEAP_TYPE_PAGE|GUARD_HEAP_TYPE_POOL) &&
-      IsHeapGuardEnabled (GUARD_HEAP_TYPE_FREED))
+  if ((gDxeMps.HeapGuard.PageGuardEnabled ||
+       gDxeMps.HeapGuard.PoolGuardEnabled) &&
+      gDxeMps.HeapGuard.FreedMemoryGuardEnabled)
   {
     DEBUG ((DEBUG_ERROR, "Heap guard and freed memory guard cannot be enabled at the same time.\n"));
     CpuDeadLoop ();
   }
 
-  if (IsHeapGuardEnabled (GUARD_HEAP_TYPE_PAGE|GUARD_HEAP_TYPE_POOL)) {
+  if (gDxeMps.HeapGuard.PageGuardEnabled ||
+      gDxeMps.HeapGuard.PoolGuardEnabled)
+  {
     SetAllGuardPages ();
   }
 
-  if (IsHeapGuardEnabled (GUARD_HEAP_TYPE_FREED)) {
+  if (gDxeMps.HeapGuard.FreedMemoryGuardEnabled) {
     GuardAllFreedPages ();
   }
 }
@@ -1660,7 +1639,10 @@ DumpGuardedMemoryBitmap (
   CHAR8   *Ruler1;
   CHAR8   *Ruler2;
 
-  if (!IsHeapGuardEnabled (GUARD_HEAP_TYPE_ALL)) {
+  if (!gDxeMps.HeapGuard.FreedMemoryGuardEnabled &&
+      !gDxeMps.HeapGuard.PageGuardEnabled &&
+      !gDxeMps.HeapGuard.PoolGuardEnabled)
+  {
     return;
   }
 
