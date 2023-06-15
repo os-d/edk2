@@ -75,21 +75,6 @@ MemMapInitialization (
   ASSERT_RETURN_ERROR (PcdStatus);
 }
 
-STATIC
-VOID
-NoexecDxeInitialization (
-  IN OUT EFI_HOB_PLATFORM_INFO  *PlatformInfoHob
-  )
-{
-  RETURN_STATUS  Status;
-
-  Status = PlatformNoexecDxeInitialization (PlatformInfoHob);
-  if (!RETURN_ERROR (Status)) {
-    Status = PcdSetBoolS (PcdSetNxForStack, PlatformInfoHob->PcdSetNxForStack);
-    ASSERT_RETURN_ERROR (Status);
-  }
-}
-
 static const UINT8  EmptyFdt[] = {
   0xd0, 0x0d, 0xfe, 0xed, 0x00, 0x00, 0x00, 0x48,
   0x00, 0x00, 0x00, 0x38, 0x00, 0x00, 0x00, 0x48,
@@ -377,7 +362,6 @@ InitializePlatform (
     PeiFvInitialization (PlatformInfoHob);
     MemTypeInfoInitialization (PlatformInfoHob);
     MemMapInitialization (PlatformInfoHob);
-    NoexecDxeInitialization (PlatformInfoHob);
   }
 
   InstallClearCacheCallback ();

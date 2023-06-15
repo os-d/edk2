@@ -11,18 +11,21 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 #include <Library/DebugLib.h>
 #include <Library/BaseLib.h>
 #include <Library/BaseMemoryLib.h>
+#include <Library/HobLib.h>
 #include <Library/MemoryAllocationLib.h>
 #include <Library/PcdLib.h>
 #include <Guid/MemoryTypeInformation.h>
 #include <Guid/MemoryAllocationHob.h>
 #include <Guid/PcdDataBaseSignatureGuid.h>
+#include <Guid/DxeMemoryProtectionSettings.h>
 #include <Register/Intel/Cpuid.h>
 #include <Library/PrePiLib.h>
 #include "X64/PageTables.h"
 #include <Library/ReportStatusCodeLib.h>
 
 #define STACK_SIZE  0x20000
-extern EFI_GUID  gEfiNonCcFvGuid;
+extern EFI_GUID                 gEfiNonCcFvGuid;
+DXE_MEMORY_PROTECTION_SETTINGS  mDxeMps;
 
 /**
    Transfers control to DxeCore.
@@ -41,13 +44,21 @@ HandOffToDxeCore (
   VOID   *BaseOfStack;
   VOID   *TopOfStack;
   UINTN  PageTables;
+  VOID   *Ptr;
 
-  //
-  // Clear page 0 and mark it as allocated if NULL pointer detection is enabled.
-  //
-  if (IsNullDetectionEnabled ()) {
-    ClearFirst4KPage (GetHobList ());
-    BuildMemoryAllocationHob (0, EFI_PAGES_TO_SIZE (1), EfiBootServicesData);
+  Ptr = GetFirstGuidHob (&gDxeMemoryProtectionSettingsGuid);
+
+  if ((Ptr != NULL) && DXE_MPS_IS_STRUCT_VALID (GET_GUID_HOB_DATA (Ptr))) {
+    CopyMem (&mDxeMps, GET_GUID_HOB_DATA (Ptr), sizeof (DXE_MEMORY_PROTECTION_SETTINGS));
+  } else {
+    ZeroMem (&mDxeMps, sizeof (DXE_MEMORY_PROTECTION_SETTINGS));
+  }
+
+  if (mDxeMps.NullPointerDetection.Enabled) {
+    ASSERT (CanAllocateNullPage (GetHobList ()));
+    // Clear NULL page and mark it as allocated for NULL detection
+    SetMem (NULL, EFI_PAGE_SIZE, (UINTN)NULL);
+    BuildMemoryAllocationHob ((UINTN)NULL, EFI_PAGES_TO_SIZE (1), EfiBootServicesData);
   }
 
   //
