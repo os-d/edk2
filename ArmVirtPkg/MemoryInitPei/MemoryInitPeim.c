@@ -14,7 +14,9 @@
 #include <Library/PeimEntryPoint.h>
 #include <Library/PeiServicesLib.h>
 #include <Library/PcdLib.h>
+#include <Guid/DxeMemoryProtectionSettings.h>
 #include <Guid/MemoryTypeInformation.h>
+#include <Guid/MmMemoryProtectionSettings.h>
 
 EFI_STATUS
 EFIAPI
@@ -76,8 +78,10 @@ InitializeMemory (
   IN CONST EFI_PEI_SERVICES     **PeiServices
   )
 {
-  UINTN       UefiMemoryBase;
-  EFI_STATUS  Status;
+  UINTN                           UefiMemoryBase;
+  EFI_STATUS                      Status;
+  DXE_MEMORY_PROTECTION_SETTINGS  DxeSettings;
+  MM_MEMORY_PROTECTION_SETTINGS   MmSettings;
 
   ASSERT (FixedPcdGet64 (PcdSystemMemoryBase) < (UINT64)MAX_ALLOC_ADDRESS);
 
@@ -99,6 +103,23 @@ InitializeMemory (
              FixedPcdGet32 (PcdSystemMemoryUefiRegionSize)
              );
   ASSERT_EFI_ERROR (Status);
+
+  DxeSettings = (DXE_MEMORY_PROTECTION_SETTINGS)DXE_MEMORY_PROTECTION_SETTINGS_DEBUG;
+  MmSettings  = (MM_MEMORY_PROTECTION_SETTINGS)MM_MEMORY_PROTECTION_SETTINGS_DEBUG;
+
+  DxeSettings.NullPointerDetection.DisableEndOfDxe = TRUE;
+
+  BuildGuidDataHob (
+    &gDxeMemoryProtectionSettingsGuid,
+    &DxeSettings,
+    sizeof (DxeSettings)
+    );
+
+  BuildGuidDataHob (
+    &gMmMemoryProtectionSettingsGuid,
+    &MmSettings,
+    sizeof (MmSettings)
+    );
 
   return Status;
 }

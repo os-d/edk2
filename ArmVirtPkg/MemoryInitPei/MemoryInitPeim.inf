@@ -37,6 +37,8 @@
 
 [Guids]
   gEfiMemoryTypeInformationGuid
+  gDxeMemoryProtectionSettingsGuid
+  gMmMemoryProtectionSettingsGuid
 
 [FeaturePcd]
   gEmbeddedTokenSpaceGuid.PcdPrePiProduceMemoryTypeInformationHob
