@@ -157,6 +157,12 @@
   RngLib|MdePkg/Library/BaseRngLibTimerLib/BaseRngLibTimerLib.inf
 
   #
+  # Memory Protection Libraries for setting and getting memory protection settings
+  #
+  SetMemoryProtectionSettingsLib|MdeModulePkg/Library/SetMemoryProtectionSettingsLib/SetMemoryProtectionSettingsLib.inf
+  GetMemoryProtectionSettingsLib|MdeModulePkg/Library/GetMemoryProtectionSettingsLib/GetDxeMemoryProtectionSettingsLib.inf
+
+  #
   # Secure Boot dependencies
   #
 !if $(SECURE_BOOT_ENABLE) == TRUE

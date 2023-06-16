@@ -338,6 +338,7 @@
   MdeModulePkg/Core/Pei/PeiMain.inf
   ArmPlatformPkg/PlatformPei/PlatformPeim.inf
   ArmVirtPkg/MemoryInitPei/MemoryInitPeim.inf
+  ArmVirtPkg/MemoryProtectionInitPei/MemoryProtectionInitPei.inf
   ArmPkg/Drivers/CpuPei/CpuPei.inf
 
 !if $(TPM2_ENABLE) == TRUE
