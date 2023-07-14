@@ -21,32 +21,41 @@ we can reflect on how it addresses each of these issues.
 
 Currently, this document is scoped to the DXE boot environment which typically has the largest attack surface and
 greatest opportunity for downstream consumers to accidentally break core expectations. Some of this applies to other
-phases, while they also have their own unique issues.
+phases, while they also have their own unique issues. Note, many of the links in this document point to x86 versions of
+CpuDxe, but other architectures have their own CpuDxes, with similar (and different!) approaches to handling memory
+protections.
 
 ## Lack of Synchronization Between GCD and Page Table
 
 The Global Coherency Domain (GCD) and the page table are not kept synchronized consistently. Some drivers may
-query/update the GCD, some may query/update the page table, but synchronized updates are not guaranteed.
+[query/update the GCD](https://github.com/tianocore/edk2/blob/ff3382a51ca726a90f49623a2b2d2e8ad8459ce2/MdeModulePkg/Bus/Pci/PciHostBridgeDxe/PciHostBridge.c#L551-L555),
+some may
+[query/update the page table](https://github.com/tianocore/edk2/blob/ff3382a51ca726a90f49623a2b2d2e8ad8459ce2/OvmfPkg/Fdt/HighMemDxe/HighMemDxe.c#L157),
+but synchronized updates are not guaranteed.
 
-Typically, updates to the GCD update the page table, except during the window of time when CpuDxe is not available yet.
-Conversely, updates to the page table (via CpuDxe) do not update the GCD, except during the initialization of CpuDxe,
-when some of the information is synchronized back to the GCD. However, even in this limited synchronization, many
-errors have been seen, especially as CpuDxe is different between architectures. This leads to issue fragmentation across
-architectures.
+Typically, updates to the GCD update the page table, except during the
+[window of time when CpuDxe is not available yet](https://github.com/tianocore/edk2/blob/ff3382a51ca726a90f49623a2b2d2e8ad8459ce2/MdeModulePkg/Core/Dxe/Gcd/Gcd.c#L912C3-L921).
+Conversely, updates to the page table
+([via CpuDxe](https://github.com/tianocore/edk2/blob/ff3382a51ca726a90f49623a2b2d2e8ad8459ce2/UefiCpuPkg/CpuDxe/CpuDxe.c#L371))
+do not update the GCD, except during the initialization of CpuDxe, when some of the information is
+[synchronized back to the GCD](https://github.com/tianocore/edk2/blob/ff3382a51ca726a90f49623a2b2d2e8ad8459ce2/UefiCpuPkg/CpuDxe/CpuDxe.c#L921).
+However, even in this limited synchronization, many errors have been seen, especially as CpuDxe is different between
+architectures. This leads to issue fragmentation across architectures.
 
-For example, a fix was made to ensure non-execute (NX), read-only (RO), and read-protect (RP) capabilities are added to
-the GCD from the page table for x86, but AARCH64 was left broken and would silently drop any NX, RO, or RP bits that
-were actually set in the page table. As a result, drivers were unaware they were allocating NX, RO, or RP memory and
-faulted as a result.
+For example, [a fix](https://bugzilla.tianocore.org/show_bug.cgi?id=753) was made to ensure non-execute (NX),
+read-only (RO), and read-protect (RP) capabilities are added to the GCD from the page table for x86, but AARCH64 was
+left broken and would silently drop any NX, RO, or RP bits that were actually set in the page table. As a result,
+drivers were unaware they were allocating NX, RO, or RP memory and faulted as a result.
 
 ## Memory Attributes Protocol and CpuDxe Memory Attributes Protocol Skip GCD
 
 This issue is related to the last but deserves highlighting. The GCD, which is nominally the source of truth for memory
 attributes in DXE (although as we will see it is one source of truth among many) can be bypassed by drivers using the
-memory attributes protocol or CpuDxe memory attribute protocol, which will directly update the page table, but the GCD
-will never have knowledge of this. This can lead to issues such as DXE believing a block of memory is safe to execute or
-write or read, but in fact the page table has been updated and so a fault will occur upon the now invalid but untracked
-access.
+[memory attributes protocol](https://github.com/tianocore/edk2/blob/ff3382a51ca726a90f49623a2b2d2e8ad8459ce2/ArmPkg/Drivers/CpuDxe/MemoryAttribute.c#L179)
+or [CpuDxe memory attribute protocol](https://github.com/tianocore/edk2/blob/ff3382a51ca726a90f49623a2b2d2e8ad8459ce2/UefiCpuPkg/CpuDxe/CpuDxe.c#L371),
+which will directly update the page table, but the GCD will never have knowledge of this. This can lead to issues such
+as DXE believing a block of memory is safe to execute or write or read, but in fact the page table has been updated and
+so a fault will occur upon the now invalid but untracked access.
 
 ## Memory Attributes vs Memory Capabilities
 
@@ -57,25 +66,31 @@ places indicate this is actually a capabilities field, not physically set attrib
 they are vague as to whether this indicates real attributes or merely capabilities. This has led to issues such as both
 recent (at the time) versions of Windows and Linux failing to boot because they treated this Attributes field as
 physically set Attributes in the page table to be respected, seeing all memory as NX, and being unable to execute code.
+See this [bugzilla](https://bugzilla.tianocore.org/show_bug.cgi?id=753) for more details on the above.
 
 There are other instances in the codebase where the concept of attributes and capabilities get intertwined, such as in
-resource descriptor HOBs, whose descriptors have a field for memory attributes which contains both attributes and
-capabilities.
+resource descriptor HOBs, whose descriptors have a
+[field for memory attributes](https://github.com/tianocore/edk2/blob/ff3382a51ca726a90f49623a2b2d2e8ad8459ce2/MdePkg/Include/Pi/PiHob.h#L330)
+which contains both attributes and capabilities.
 
 ## EFI Memory Map Has No Memory Protection Attributes/Capabilities Set
 
-Due to the OS boot bug listed in the section above, a decision was made to scrub the EFI Memory Map of all memory
-protection attributes. This leads bootloaders and early parts of OSes to believe that no memory is capable of being NX,
-RO, or RP, which can lead to periods of insecure memory before a kernel takes full control of memory.
+Due to the OS boot bug listed in the section above, a decision was made to
+[scrub the EFI Memory Map of all memory protection attributes](https://github.com/tianocore/edk2/blob/ff3382a51ca726a90f49623a2b2d2e8ad8459ce2/MdeModulePkg/Core/Dxe/Mem/Page.c#L2015-L2030).
+This leads bootloaders and early parts of OSes to believe that no memory is capable of being NX, RO, or RP, which can
+lead to periods of insecure memory before a kernel takes full control of memory.
 
 ## Memory Attributes and Free Memory Are Insecure By Default
 
 The current PI/UEFI spec defined memory attributes leave memory insecure by default. These definitions stem from memory
-management unit settings, some of which are changing to be secure by default. NX, RO, and RP are bits that must be set
+management unit settings, some of which are changing to be secure by default. NX, RO, and RP are bits that
+[must be set](https://github.com/tianocore/edk2/blob/ff3382a51ca726a90f49623a2b2d2e8ad8459ce2/MdePkg/Include/Uefi/UefiSpec.h#L74C1-L77)
 to enable the protection, instead of leaving memory secure by default (e.g. if the NX bit meant 0 as NX). This leads to
 the possibility of free memory getting attacker controlled payloads written to it and potentially executed from it. It
 also means that every allocator of memory is relied upon to set memory protections upon code unless the core has applied
-some baseline protection on it (though this is currently limited to NX, if the system has been configured for it).
+some baseline protection on it (though this is currently
+[limited to NX](https://github.com/tianocore/edk2/blob/ff3382a51ca726a90f49623a2b2d2e8ad8459ce2/MdeModulePkg/Core/Dxe/Misc/MemoryProtection.c#L661-L664),
+if the system has been configured for it).
 
 ## Core Code Has Limited Control Of Memory Protections
 
