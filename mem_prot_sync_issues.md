@@ -1,46 +1,54 @@
 # Memory Protections Synchronization Issues
 
-This addresses github issue (#14)[https://github.com/tianocore/projects/issues/14] to document the synchronization
+This addresses github issue [#14](https://github.com/tianocore/projects/issues/14) to document the synchronization
 issues with the existing edk2 memory protection implementation.
 
-# Introduction
+## Introduction
 
 Today's edk2 memory protection code is multilayered with a large attack surface, inconsistent internal tracking, and
 large differences in implementations between architectures. A large number of bugs have come from the current
-architecture, including but certainly not limited to: https://bugzilla.tianocore.org/show_bug.cgi?id=753,
-https://edk2.groups.io/g/devel/topic/99095992#105872, https://edk2.groups.io/g/devel/topic/98505340. Other issues
-included all DMA memory getting marked as executable by default regardless of memory protection settings.
+architecture, including but certainly not limited to:
 
-This document is an effort in the ongoing workstream to offer better and more consistent memory protections in edk2. We
-hope to enumerate the multitude of issues seen with the current design, so that as we shape the future design, we can
-reflect on how it addresses each of these issues. This document in particular focuses on the synchronization and memory
-attribute tracking within edk2. This document focuses on the DXE environment as the initial efforts will aim to tackle
-this phase which typically has the largest attack surface and opportunity for downstream consumers to accidentally break
-core expectations. Some of this applies to other phases, while they also have their own unique issues.
+- [Bugzilla 753](https://bugzilla.tianocore.org/show_bug.cgi?id=753)
+- [[PATCH v1 1/1] ArmPkg: CpuDxe: Report AARCH64 Memory Protections Attributes To GCD](https://edk2.groups.io/g/devel/topic/99095992#105872)
+- [[PATCH v1 1/1] ArmPkg: CpuDxe: Sync GCD Capabilities With Page Table Attributes](https://edk2.groups.io/g/devel/topic/98505340).
 
-# Lack of Synchronization Between GCD and Page Table
+Other issues included all DMA memory getting marked as executable by default regardless of memory protection settings.
+
+This document contributes to an ongoing Tianocore workstream to offer better and more consistent memory protections in
+edk2. We hope to enumerate the multitude of issues seen with the current design, so that as we shape the future design,
+we can reflect on how it addresses each of these issues.
+
+Currently, this document is scoped to the DXE boot environment which typically has the largest attack surface and
+greatest opportunity for downstream consumers to accidentally break core expectations. Some of this applies to other
+phases, while they also have their own unique issues.
+
+## Lack of Synchronization Between GCD and Page Table
 
 The Global Coherency Domain (GCD) and the page table are not kept synchronized consistently. Some drivers may
-query/update the GCD, some may query/update the page table, but these are not guaranteed to update the other one.
-Typically, updates to the GCD update the page table, except in the window where CpuDxe is not available yet, while
-updates to the page table (which are through CpuDxe) do not update the GCD, except during the initialization of CpuDxe,
-where some of the information is synchronized back to the GCD. However, even in this limited synchronization, many
-errors have been seen, especially as CpuDxe is different between architectures. This leads to issues getting fixed for
-one architecture, but not another, for example the x86 GCD syncing with the page table was fixed in regards to adding
-non-execute (NX), read-only (RO), and read-protect (RP) capabilities to the GCD, but the AARCH64 GCD syncing was left
-broken and would silently drop any NX, RO, or RP bits that were actually set in the page table, leading to drivers
-thinking they weren't allocating NX, RO, or RP memory and faulting as a result.
+query/update the GCD, some may query/update the page table, but synchronized updates are not guaranteed.
 
-# Memory Attributes Protocol and CpuDxe Memory Attributes Protocol Skip GCD
+Typically, updates to the GCD update the page table, except during the window of time when CpuDxe is not available yet.
+Conversely, updates to the page table (via CpuDxe) do not update the GCD, except during the initialization of CpuDxe,
+when some of the information is synchronized back to the GCD. However, even in this limited synchronization, many
+errors have been seen, especially as CpuDxe is different between architectures. This leads to issue fragmentation across
+architectures.
 
-This issue is related to the last, but deserves highlighting. The GCD, which is nominally the source of truth for memory
+For example, a fix was made to ensure non-execute (NX), read-only (RO), and read-protect (RP) capabilities are added to
+the GCD from the page table for x86, but AARCH64 was left broken and would silently drop any NX, RO, or RP bits that
+were actually set in the page table. As a result, drivers were unaware they were allocating NX, RO, or RP memory and
+faulted as a result.
+
+## Memory Attributes Protocol and CpuDxe Memory Attributes Protocol Skip GCD
+
+This issue is related to the last but deserves highlighting. The GCD, which is nominally the source of truth for memory
 attributes in DXE (although as we will see it is one source of truth among many) can be bypassed by drivers using the
 memory attributes protocol or CpuDxe memory attribute protocol, which will directly update the page table, but the GCD
 will never have knowledge of this. This can lead to issues such as DXE believing a block of memory is safe to execute or
 write or read, but in fact the page table has been updated and so a fault will occur upon the now invalid but untracked
 access.
 
-# Memory Attributes vs Memory Capabilities
+## Memory Attributes vs Memory Capabilities
 
 Currently, the PI and UEFI specs are vague in defining the difference between memory attributes and capabilities. In the
 GCD, this distinction is clear, because its descriptors have fields for both attributes and capabilities. However, in
@@ -54,13 +62,13 @@ There are other instances in the codebase where the concept of attributes and ca
 resource descriptor HOBs, whose descriptors have a field for memory attributes which contains both attributes and
 capabilities.
 
-# EFI Memory Map Has No Memory Protection Attributes/Capabilities Set
+## EFI Memory Map Has No Memory Protection Attributes/Capabilities Set
 
 Due to the OS boot bug listed in the section above, a decision was made to scrub the EFI Memory Map of all memory
 protection attributes. This leads bootloaders and early parts of OSes to believe that no memory is capable of being NX,
 RO, or RP, which can lead to periods of insecure memory before a kernel takes full control of memory.
 
-# Memory Attributes and Free Memory Are Insecure By Default
+## Memory Attributes and Free Memory Are Insecure By Default
 
 The current PI/UEFI spec defined memory attributes leave memory insecure by default. These definitions stem from memory
 management unit settings, some of which are changing to be secure by default. NX, RO, and RP are bits that must be set
@@ -69,10 +77,10 @@ the possibility of free memory getting attacker controlled payloads written to i
 also means that every allocator of memory is relied upon to set memory protections upon code unless the core has applied
 some baseline protection on it (though this is currently limited to NX, if the system has been configured for it).
 
-# Core Code Has Limited Control Of Memory Protections
+## Core Code Has Limited Control Of Memory Protections
 
 Today, core code heavily defers to platforms to decide whether to enable memory protections or not. By default, all
-memory protection is disabled and it is up to a platform to set a variety of PCDs and update their resource descriptor
+memory protection is disabled, and it is up to a platform to set a variety of PCDs and update their resource descriptor
 HOBs to add capabilities for memory protections. This leads to the state we are in today, where platforms by and large
 prioritize shipping products to security, and so leave off memory protections on production platforms. The core has a
 responsibility to downstream consumers and users of edk2 derived platforms to enable security by default instead of
@@ -84,7 +92,7 @@ platform vendor. A different, more secure model would be to have the core enforc
 going through a transition period for existing platforms to conform) and perhaps disallow memory attribute changes from
 certain sources, like option ROMs.
 
-# Multiple Sources of Truth
+## Multiple Sources of Truth
 
 All of the above points boil down into one central issue: today's design suffers from no single source of truth for
 memory attributes; of course, in the end, the physical bits in the MMU affect how the underlying memory is configured.
