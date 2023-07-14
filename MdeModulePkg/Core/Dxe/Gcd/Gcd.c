@@ -2260,8 +2260,7 @@ CoreInitializeMemoryServices (
   ASSERT (GET_HOB_TYPE (Hob) == EFI_HOB_TYPE_HANDOFF);
 
   //
-  // Initialize the spin locks and maps in the memory services.
-  // Also fill in the memory services into the EFI Boot Services Table
+  // Setup basic memory pools
   //
   CoreInitializePool ();
 
@@ -2303,7 +2302,7 @@ CoreInitializeMemoryServices (
   }
 
   //
-  // Include the total memory bin size needed to make sure memory bin could be allocated successfully.
+  // Include the total memory bin size needed to make sure the memory bin could be allocated successfully.
   //
   MinimalMemorySizeNeeded = MINIMUM_INITIAL_MEMORY_SIZE + CalculateTotalMemoryBinSizeNeeded ();
 

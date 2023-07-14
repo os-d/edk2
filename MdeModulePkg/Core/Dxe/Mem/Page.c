@@ -96,7 +96,7 @@ EFI_MEMORY_TYPE_INFORMATION  gMemoryTypeInformation[EfiMaxMemoryType + 1] = {
 GLOBAL_REMOVE_IF_UNREFERENCED   BOOLEAN  gLoadFixedAddressCodeMemoryReady = FALSE;
 
 /**
-  Enter critical section by gaining lock on gMemoryLock.
+  Enter critical section by gaining lock on mGcdMemorySpaceLock.
 
 **/
 VOID
@@ -104,11 +104,11 @@ CoreAcquireMemoryLock (
   VOID
   )
 {
-  CoreAcquireLock (&gMemoryLock);
+  CoreAcquireLock (&mGcdMemorySpaceLock);
 }
 
 /**
-  Exit critical section by releasing lock on gMemoryLock.
+  Exit critical section by releasing lock on mMemorySpaceLock.
 
 **/
 VOID
@@ -116,7 +116,7 @@ CoreReleaseMemoryLock (
   VOID
   )
 {
-  CoreReleaseLock (&gMemoryLock);
+  CoreReleaseLock (&mGcdMemorySpaceLock);
 }
 
 /**
@@ -158,7 +158,8 @@ CoreAddRange (
   IN EFI_MEMORY_TYPE       Type,
   IN EFI_PHYSICAL_ADDRESS  Start,
   IN EFI_PHYSICAL_ADDRESS  End,
-  IN UINT64                Attribute
+  IN UINT64                Attributes,
+  IN UINT64                Capabilities
   )
 {
   LIST_ENTRY  *Link;
@@ -167,7 +168,7 @@ CoreAddRange (
   ASSERT ((Start & EFI_PAGE_MASK) == 0);
   ASSERT (End > Start);
 
-  ASSERT_LOCKED (&gMemoryLock);
+  ASSERT_LOCKED (&mGcdMemorySpaceLock);
 
   DEBUG ((DEBUG_PAGE, "AddRange: %lx-%lx to %d\n", Start, End, Type));
 
@@ -192,7 +193,7 @@ CoreAddRange (
   mMemoryMapKey += 1;
 
   //
-  // UEFI 2.0 added an event group for notificaiton on memory map changes.
+  // UEFI 2.0 added an event group for notification on memory map changes.
   // So we need to signal this Event Group every time the memory map changes.
   // If we are in EFI 1.10 compatability mode no event groups will be
   // found and nothing will happen we we call this function. These events
@@ -210,10 +211,40 @@ CoreAddRange (
   // and the same Attribute
   //
 
-  Link = gMemoryMap.ForwardLink;
-  while (Link != &gMemoryMap) {
-    Entry = CR (Link, MEMORY_MAP, Link, MEMORY_MAP_SIGNATURE);
+  Link = mGcdMemorySpaceMap.ForwardLink;
+  while (Link != &mGcdMemorySpaceMap) {
+    Entry = CR (Link, EFI_GCD_MAP_ENTRY, Link, EFI_GCD_MAP_SIGNATURE);
     Link  = Link->ForwardLink;
+
+    if ((Entry->Capabilities   != Capabilities) ||
+        (Entry->Attributes     != Attributes) ||
+        (Entry->GcdMemoryType  != Type) ||
+        (Entry->GcdIoType      != EfiGcdIoTypeNonExistent) ||
+        (Entry->ImageHandle    != NULL) ||
+        (Entry->DeviceHandle   != NULL) ||)
+    {
+      continue;
+    }
+
+    if (Entry->Attributes != AdjacentEntry->Attributes) {
+      return EFI_UNSUPPORTED;
+    }
+
+    if (Entry->GcdMemoryType != AdjacentEntry->GcdMemoryType) {
+      return EFI_UNSUPPORTED;
+    }
+
+    if (Entry->GcdIoType != AdjacentEntry->GcdIoType) {
+      return EFI_UNSUPPORTED;
+    }
+
+    if (Entry->ImageHandle != AdjacentEntry->ImageHandle) {
+      return EFI_UNSUPPORTED;
+    }
+
+    if (Entry->DeviceHandle != AdjacentEntry->DeviceHandle) {
+      return EFI_UNSUPPORTED;
+    }
 
     if (Entry->Type != Type) {
       continue;
