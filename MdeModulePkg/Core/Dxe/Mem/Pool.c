@@ -312,13 +312,13 @@ CoreAllocatePoolPagesI (
   VOID        *Buffer;
   EFI_STATUS  Status;
 
-  Status = CoreAcquireLockOrFail (&gMemoryLock);
+  Status = CoreAcquireLockOrFail (&mGcdMemorySpaceLock);
   if (EFI_ERROR (Status)) {
     return NULL;
   }
 
   Buffer = CoreAllocatePoolPages (PoolType, NoPages, Granularity, NeedGuard);
-  CoreReleaseMemoryLock ();
+  CoreReleaseGcdMemoryLock ();
 
   if (Buffer != NULL) {
     if (NeedGuard) {
@@ -616,9 +616,9 @@ CoreFreePoolPagesI (
   IN UINTN                 NoPages
   )
 {
-  CoreAcquireMemoryLock ();
+  CoreAcquireGcdMemoryLock ();
   CoreFreePoolPages (Memory, NoPages);
-  CoreReleaseMemoryLock ();
+  CoreReleaseGcdMemoryLock ();
 
   GuardFreedPagesChecked (Memory, NoPages);
   ApplyMemoryProtectionPolicy (

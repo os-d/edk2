@@ -55,6 +55,7 @@ EFI_GCD_MAP_ENTRY  mGcdMemorySpaceMapEntryTemplate = {
   0,
   0,
   0,
+  EfiConventionalMemory,
   EfiGcdMemoryTypeNonExistent,
   (EFI_GCD_IO_TYPE)0,
   NULL,
@@ -71,6 +72,7 @@ EFI_GCD_MAP_ENTRY  mGcdIoSpaceMapEntryTemplate = {
   0,
   0,
   0,
+  EfiMemoryMappedIO, // OSDDEBUG need to investigate IO space much more
   (EFI_GCD_MEMORY_TYPE)0,
   EfiGcdIoTypeNonExistent,
   NULL,
@@ -1490,8 +1492,10 @@ CoreAddMemorySpace (
     if (!EFI_ERROR (Status)) {
       CoreAddMemoryDescriptor (
         EfiConventionalMemory,
+        EfiGcdMemoryTypeSystemMemory,
         PageBaseAddress,
         RShiftU64 (PageLength, EFI_PAGE_SHIFT),
+        Capabilities,
         Capabilities
         );
     } else {
@@ -1509,8 +1513,10 @@ CoreAddMemorySpace (
         if (!EFI_ERROR (Status)) {
           CoreAddMemoryDescriptor (
             EfiConventionalMemory,
+            EfiGcdMemoryTypeSystemMemory,
             PageBaseAddress,
             1,
+            Capabilities,
             Capabilities
             );
         }
@@ -2470,8 +2476,10 @@ CoreInitializeMemoryServices (
   //
   CoreAddMemoryDescriptor (
     EfiConventionalMemory,
+    EfiGcdMemoryTypeSystemMemory,
     BaseAddress,
     RShiftU64 (Length, EFI_PAGE_SHIFT),
+    Capabilities,
     Capabilities
     );
 
@@ -2690,9 +2698,11 @@ CoreInitializeGcdServices (
         {
           CoreAddMemoryDescriptor (
             MemoryHob->AllocDescriptor.MemoryType,
+            Descriptor.GcdMemoryType,
             MemoryHob->AllocDescriptor.MemoryBaseAddress,
             RShiftU64 (MemoryHob->AllocDescriptor.MemoryLength, EFI_PAGE_SHIFT),
-            Descriptor.Capabilities & (~EFI_MEMORY_RUNTIME)
+            Descriptor.Capabilities & (~EFI_MEMORY_RUNTIME),
+            Descriptor.Capabilities
             );
         }
       }
@@ -2745,9 +2755,11 @@ CoreInitializeGcdServices (
 
         CoreAddMemoryDescriptor (
           EfiConventionalMemory,
+          EfiGcdMemoryTypeSystemMemory,
           BaseAddress,
           RShiftU64 (Length, EFI_PAGE_SHIFT),
-          MemorySpaceMap[Index].Capabilities & (~EFI_MEMORY_RUNTIME)
+          MemorySpaceMap[Index].Capabilities & (~EFI_MEMORY_RUNTIME),
+          MemorySpaceMap[Index].Capabilities
           );
         Status = CoreAllocateMemorySpace (
                    EfiGcdAllocateAddress,
@@ -2787,9 +2799,11 @@ CoreInitializeGcdServices (
     Length      = PageAlignLength (MemorySpaceMapHobList->BaseAddress + MemorySpaceMapHobList->Length - BaseAddress);
     CoreAddMemoryDescriptor (
       EfiConventionalMemory,
+      EfiGcdMemoryTypeSystemMemory,
       BaseAddress,
       RShiftU64 (Length, EFI_PAGE_SHIFT),
-      MemorySpaceMapHobList->Capabilities & (~EFI_MEMORY_RUNTIME)
+      MemorySpaceMapHobList->Capabilities & (~EFI_MEMORY_RUNTIME),
+      MemorySpaceMapHobList->Capabilities
       );
     Status = CoreAllocateMemorySpace (
                EfiGcdAllocateAddress,
