@@ -174,10 +174,18 @@ typedef struct {
   UINT64                  EndAddress;
   UINT64                  Capabilities;
   UINT64                  Attributes;
+
+  /* Efi memory type that tracks what memory is allocated here*/
+  EFI_MEMORY_TYPE         EfiMemoryType;
+
+  /* Gcd memory type that tracks what region type this is part of*/
   EFI_GCD_MEMORY_TYPE     GcdMemoryType;
   EFI_GCD_IO_TYPE         GcdIoType;
   EFI_HANDLE              ImageHandle;
   EFI_HANDLE              DeviceHandle;
+
+  /* Indicates whether this entry is stack backed memory, as in early init, or heap based */
+  BOOLEAN                 FromPages;
 } EFI_GCD_MAP_ENTRY;
 
 #define LOADED_IMAGE_PRIVATE_DATA_SIGNATURE  SIGNATURE_32('l','d','r','i')
@@ -315,10 +323,12 @@ CoreInitializePool (
 **/
 VOID
 CoreAddMemoryDescriptor (
-  IN EFI_MEMORY_TYPE       Type,
+  IN EFI_MEMORY_TYPE       EfiMemoryType,
+  IN EFI_GCD_MEMORY_TYPE   GcdMemoryType,
   IN EFI_PHYSICAL_ADDRESS  Start,
   IN UINT64                NumberOfPages,
-  IN UINT64                Attribute
+  IN UINT64                Attributes,
+  IN UINT64                Capabilities
   );
 
 /**

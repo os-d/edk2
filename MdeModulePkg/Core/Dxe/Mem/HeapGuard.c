@@ -1540,16 +1540,14 @@ PromoteGuardedFreePages (
     DEBUG ((DEBUG_INFO, "Promoted pages: %lX (%lx)\r\n", Start, (UINT64)AvailablePages));
     ClearGuardedMemoryBits (Start, AvailablePages);
 
-    if (gCpu != NULL) {
-      //
-      // Set flag to make sure allocating memory without GUARD for page table
-      // operation; otherwise infinite loops could be caused.
-      //
-      mOnGuarding = TRUE;
-      Status      = gCpu->SetMemoryAttributes (gCpu, Start, EFI_PAGES_TO_SIZE (AvailablePages), 0);
-      ASSERT_EFI_ERROR (Status);
-      mOnGuarding = FALSE;
-    }
+    //
+    // Set flag to make sure allocating memory without GUARD for page table
+    // operation; otherwise infinite loops could be caused.
+    //
+    mOnGuarding = TRUE;
+    Status      = CoreSetMemorySpaceAttributes (Start, EFI_PAGES_TO_SIZE (AvailablePages), 0);
+    ASSERT_EFI_ERROR (Status);
+    mOnGuarding = FALSE;
 
     mLastPromotedPage = Start;
     *StartAddress     = Start;
