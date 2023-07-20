@@ -506,7 +506,8 @@ EFI_STATUS
 CoreMergeGcdMapEntry (
   IN LIST_ENTRY  *Link,
   IN BOOLEAN     Forward,
-  IN LIST_ENTRY  *Map
+  IN LIST_ENTRY  *Map,
+  IN EFI_LOCK    *Lock
   )
 {
   LIST_ENTRY         *AdjacentLink;
@@ -567,7 +568,10 @@ CoreMergeGcdMapEntry (
   }
 
   RemoveEntryList (AdjacentLink);
+  // Freeing the pool can cause pages to get freed, drop the lock in case
+  CoreReleaseLock (Lock);
   CoreFreePool (AdjacentEntry);
+  CoreAcquireLock (Lock);
 
   return EFI_SUCCESS;
 }
@@ -590,26 +594,37 @@ CoreCleanupGcdMapEntry (
   IN EFI_GCD_MAP_ENTRY  *BottomEntry,
   IN LIST_ENTRY         *StartLink,
   IN LIST_ENTRY         *EndLink,
-  IN LIST_ENTRY         *Map
+  IN LIST_ENTRY         *Map,
+  IN EFI_LOCK           *Lock
   )
 {
   LIST_ENTRY  *Link;
 
+  // this function needs the gcd lock locked for merging entries
+  // however, in cases where it is freeing pool mem and the entire
+  // pool gets freed, the lock needs to be dropped for the pool code
+  // to take as it frees pages
+  ASSERT_LOCKED (Lock);
+
   if (TopEntry->Signature == 0) {
+    CoreReleaseLock (Lock);
     CoreFreePool (TopEntry);
+    CoreAcquireLock (Lock);
   }
 
   if (BottomEntry->Signature == 0) {
+    CoreReleaseLock (Lock); // OSDDEBUG, need to draw out locking patterns and clean it up
     CoreFreePool (BottomEntry);
+    CoreAcquireLock (Lock);
   }
 
   Link = StartLink;
   while (Link != EndLink->ForwardLink) {
-    CoreMergeGcdMapEntry (Link, FALSE, Map);
+    CoreMergeGcdMapEntry (Link, FALSE, Map, Lock);
     Link = Link->ForwardLink;
   }
 
-  CoreMergeGcdMapEntry (EndLink, TRUE, Map);
+  CoreMergeGcdMapEntry (EndLink, TRUE, Map, Lock);
 
   return EFI_SUCCESS;
 }
@@ -775,6 +790,7 @@ CoreConvertSpace (
   LIST_ENTRY         *StartLink;
   LIST_ENTRY         *EndLink;
   UINT64             CpuArchAttributes;
+  EFI_LOCK           *Lock;
 
   if (Length == 0) {
     DEBUG ((DEBUG_GCD, "  Status = %r\n", EFI_INVALID_PARAMETER));
@@ -783,10 +799,13 @@ CoreConvertSpace (
 
   Map = NULL;
   if ((Operation & GCD_MEMORY_SPACE_OPERATION) != 0) {
+    DEBUG ((DEBUG_ERROR, "OSDDEBUG 236\n"));
     CoreAcquireGcdMemoryLock ();
+    Lock = &mGcdMemorySpaceLock;
     Map = &mGcdMemorySpaceMap;
   } else if ((Operation & GCD_IO_SPACE_OPERATION) != 0) {
     CoreAcquireGcdIoLock ();
+    Lock = &mGcdIoSpaceLock;
     Map = &mGcdIoSpaceMap;
   } else {
     ASSERT (FALSE);
@@ -921,9 +940,11 @@ CoreConvertSpace (
   // Allocate work space to perform this operation
   // Drop the lock first, if we need more pages, we have to return to the well and lock it first
   //
-  CoreReleaseGcdMemoryLock();
+  CoreReleaseLock (Lock);
   Status = CoreAllocateGcdMapEntry (&TopEntry, &BottomEntry);
-  CoreAcquireGcdMemoryLock();
+  DEBUG ((DEBUG_ERROR, "OSDDEBUG 231\n"));
+  CoreAcquireLock (Lock);
+
   if (EFI_ERROR (Status)) {
     Status = EFI_OUT_OF_RESOURCES;
     DEBUG ((DEBUG_ERROR, "OSDDEBUG 202 allocate failed\n"));
@@ -959,17 +980,23 @@ CoreConvertSpace (
       if (gCpu == NULL) {
         Status = EFI_NOT_AVAILABLE_YET;
       } else {
+        // the page table code can allocate pages, so we need to free the lock ahead of time
+        CoreReleaseLock(Lock);
         Status = gCpu->SetMemoryAttributes (
                          gCpu,
                          BaseAddress,
                          Length,
                          CpuArchAttributes
                          );
+        CoreAcquireLock (Lock);
       }
 
       if (EFI_ERROR (Status)) {
+        // Freeing the pool can free pages, which grabs the gcd lock, so release it first
+        CoreReleaseLock (Lock);
         CoreFreePool (TopEntry);
         CoreFreePool (BottomEntry);
+        CoreAcquireLock (Lock);
         goto Done;
       }
     }
@@ -1044,7 +1071,7 @@ CoreConvertSpace (
   //
   // Cleanup
   //
-  Status = CoreCleanupGcdMapEntry (TopEntry, BottomEntry, StartLink, EndLink, Map);
+  Status = CoreCleanupGcdMapEntry (TopEntry, BottomEntry, StartLink, EndLink, Map, Lock);
   if (EFI_ERROR (Status)) {
     DEBUG ((DEBUG_ERROR, "OSDDEBUG 201 Cleanup failed\n"));
   }
@@ -1155,6 +1182,7 @@ CoreAllocateSpace (
   LIST_ENTRY            *StartLink;
   LIST_ENTRY            *EndLink;
   BOOLEAN               Found;
+  EFI_LOCK              *Lock;
 
   //
   // Make sure parameters are valid
@@ -1196,10 +1224,13 @@ CoreAllocateSpace (
 
   Map = NULL;
   if ((Operation & GCD_MEMORY_SPACE_OPERATION) != 0) {
+    DEBUG ((DEBUG_ERROR, "OSDDEBUG 232\n"));
     CoreAcquireGcdMemoryLock ();
+    Lock = &mGcdMemorySpaceLock;
     Map = &mGcdMemorySpaceMap;
   } else if ((Operation & GCD_IO_SPACE_OPERATION) != 0) {
     CoreAcquireGcdIoLock ();
+    Lock = &mGcdIoSpaceLock;
     Map = &mGcdIoSpaceMap;
   } else {
     ASSERT (FALSE);
@@ -1381,7 +1412,7 @@ CoreAllocateSpace (
   //
   // Cleanup
   //
-  Status = CoreCleanupGcdMapEntry (TopEntry, BottomEntry, StartLink, EndLink, Map);
+  Status = CoreCleanupGcdMapEntry (TopEntry, BottomEntry, StartLink, EndLink, Map, Lock);
 
 Done:
   DEBUG ((DEBUG_GCD, "  Status = %r", Status));
@@ -1673,6 +1704,7 @@ CoreGetMemorySpaceDescriptor (
     return EFI_INVALID_PARAMETER;
   }
 
+  DEBUG ((DEBUG_ERROR, "OSDDEBUG 233\n"));
   CoreAcquireGcdMemoryLock ();
 
   //
@@ -1763,7 +1795,7 @@ CoreSetMemorySpaceCapabilities (
 
   Status = CoreConvertSpace (GCD_SET_CAPABILITIES_MEMORY_OPERATION, (EFI_GCD_MEMORY_TYPE)0, (EFI_GCD_IO_TYPE)0, BaseAddress, Length, Capabilities, 0);
   if (!EFI_ERROR (Status)) {
-    CoreUpdateMemoryAttributes (BaseAddress, RShiftU64 (Length, EFI_PAGE_SHIFT), Capabilities & (~EFI_MEMORY_RUNTIME));
+    // OSDDEBUG do we not need this since we don't have separate descriptors? CoreUpdateMemoryAttributes (BaseAddress, RShiftU64 (Length, EFI_PAGE_SHIFT), Capabilities & (~EFI_MEMORY_RUNTIME));
   }
 
   return Status;
@@ -1810,6 +1842,7 @@ CoreGetMemorySpaceMap (
   //
   // Take the lock, for entering the loop with the lock held.
   //
+  DEBUG ((DEBUG_ERROR, "OSDDEBUG 234\n"));
   CoreAcquireGcdMemoryLock ();
   while (TRUE) {
     //
@@ -1868,6 +1901,7 @@ CoreGetMemorySpaceMap (
     //
     // Re-acquire the lock, for the next iteration.
     //
+    DEBUG ((DEBUG_ERROR, "OSDDEBUG 235\n"));
     CoreAcquireGcdMemoryLock ();
   }
 
