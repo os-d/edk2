@@ -80,8 +80,8 @@ InitializeMemory (
 {
   UINTN                           UefiMemoryBase;
   EFI_STATUS                      Status;
-  DXE_MEMORY_PROTECTION_SETTINGS  DxeSettings;
-  MM_MEMORY_PROTECTION_SETTINGS   MmSettings;
+  // DXE_MEMORY_PROTECTION_SETTINGS  DxeSettings;
+  // MM_MEMORY_PROTECTION_SETTINGS   MmSettings;
 
   ASSERT (FixedPcdGet64 (PcdSystemMemoryBase) < (UINT64)MAX_ALLOC_ADDRESS);
 
@@ -104,22 +104,22 @@ InitializeMemory (
              );
   ASSERT_EFI_ERROR (Status);
 
-  DxeSettings = (DXE_MEMORY_PROTECTION_SETTINGS)DXE_MEMORY_PROTECTION_SETTINGS_DEBUG;
-  MmSettings  = (MM_MEMORY_PROTECTION_SETTINGS)MM_MEMORY_PROTECTION_SETTINGS_DEBUG;
+  // DxeSettings = (DXE_MEMORY_PROTECTION_SETTINGS)DXE_MEMORY_PROTECTION_SETTINGS_DEBUG;
+  // MmSettings  = (MM_MEMORY_PROTECTION_SETTINGS)MM_MEMORY_PROTECTION_SETTINGS_DEBUG;
 
-  DxeSettings.NullPointerDetection.DisableEndOfDxe = TRUE;
+  // DxeSettings.NullPointerDetection.DisableEndOfDxe = TRUE;
 
-  BuildGuidDataHob (
-    &gDxeMemoryProtectionSettingsGuid,
-    &DxeSettings,
-    sizeof (DxeSettings)
-    );
+  // BuildGuidDataHob (
+  //   &gDxeMemoryProtectionSettingsGuid,
+  //   &DxeSettings,
+  //   sizeof (DxeSettings)
+  //   );
 
-  BuildGuidDataHob (
-    &gMmMemoryProtectionSettingsGuid,
-    &MmSettings,
-    sizeof (MmSettings)
-    );
+  // BuildGuidDataHob (
+  //   &gMmMemoryProtectionSettingsGuid,
+  //   &MmSettings,
+  //   sizeof (MmSettings)
+  //   );
 
   return Status;
 }

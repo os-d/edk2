@@ -136,7 +136,8 @@ CoreAddRange (
   IN EFI_PHYSICAL_ADDRESS  Start,
   IN EFI_PHYSICAL_ADDRESS  End,
   IN UINT64                Attributes,
-  IN UINT64                Capabilities
+  IN UINT64                Capabilities,
+  IN EFI_HANDLE            ImageHandle
   )
 {
   LIST_ENTRY         *Link;
@@ -152,17 +153,23 @@ CoreAddRange (
   //
   // If memory of type EfiConventionalMemory is being added that includes the page
   // starting at address 0, then zero the page starting at address 0.  This has
-  // two benifits.  It helps find NULL pointer bugs and it also maximizes
+  // two benefits.  It helps find NULL pointer bugs and it also maximizes
   // compatibility with operating systems that may evaluate memory in this page
   // for legacy data structures.  If memory of any other type is added starting
   // at address 0, then do not zero the page at address 0 because the page is being
   // used for other purposes.
   //
-  if ((EfiMemoryType == EfiConventionalMemory) && (Start == 0) && (End >= EFI_PAGE_SIZE - 1)) {
-    if (!gDxeMps.NullPointerDetection.Enabled) {
-      SetMem ((VOID *)(UINTN)Start, EFI_PAGE_SIZE, 0);
-    }
-  }
+  DEBUG ((DEBUG_ERROR, "OSDDEBUG 40\n"));
+  // if ((EfiMemoryType == EfiConventionalMemory) && (Start == 0) && (End >= EFI_PAGE_SIZE - 1)) {
+  //   DEBUG ((DEBUG_ERROR, "OSDDEBUG 50\n"));
+  //   if (!gDxeMps.NullPointerDetection.Enabled) {
+  //     DEBUG ((DEBUG_ERROR, "OSDDEBUG 51\n"));
+  //     SetMem ((VOID *)(UINTN)Start, EFI_PAGE_SIZE, 0);
+  //     DEBUG ((DEBUG_ERROR, "OSDDEBUG 52\n"));
+  //   }
+  // }
+
+  
 
   //
   // Memory map being altered so updated key
@@ -213,6 +220,8 @@ CoreAddRange (
     }
   }
 
+   DEBUG ((DEBUG_ERROR, "OSDDEBUG 41\n"));
+
   //
   // Add descriptor
   //
@@ -226,13 +235,16 @@ CoreAddRange (
   mMapStack[mMapDepth].Attributes   = Attributes;
   mMapStack[mMapDepth].Capabilities = Capabilities;
   mMapStack[mMapDepth].GcdIoType    = EfiGcdIoTypeNonExistent;
-  mMapStack[mMapDepth].ImageHandle  = gDxeCoreImageHandle;  // OSDDEBUG, this is what PromoteMemoryResources does, should unallocated memory be associated with DxeCore?
+  mMapStack[mMapDepth].ImageHandle  = ImageHandle;  // OSDDEBUG, this is what PromoteMemoryResources does, should unallocated memory be associated with DxeCore? <- edited from DxeCore to NULL, was causing ACCESS_DENIED to add more mem
   mMapStack[mMapDepth].DeviceHandle = NULL;
   mMapStack[mMapDepth].FromPages    = FALSE;
   InsertTailList (&mGcdMemorySpaceMap, &mMapStack[mMapDepth].Link);
+  DEBUG ((DEBUG_ERROR, "OSDDEBUG 42\n"));
 
   mMapDepth += 1;
   ASSERT (mMapDepth < MAX_MAP_DEPTH);
+
+  
 
   return;
 }
@@ -263,6 +275,7 @@ AllocateMemoryMapEntry (
     //
     // The list is empty, to allocate one page to refuel the list
     //
+    DEBUG ((DEBUG_ERROR, "OSDDEBUG allocating mem map mem\n"));
     FreeDescriptorEntries = CoreAllocatePoolPages (
                               EfiBootServicesData,
                               EFI_SIZE_TO_PAGES (DEFAULT_PAGE_ALLOCATION_GRANULARITY),
@@ -406,6 +419,8 @@ CoreLoadingFixedAddressHook (
       return;
     }
 
+    DEBUG ((DEBUG_ERROR, "OSDDEBUG allocating pcd mem\n"));
+
     //
     // Try to allocate boot memory.
     //
@@ -448,20 +463,23 @@ CoreLoadingFixedAddressHook (
   @return None.  The range is added to the memory map
 
 **/
-VOID
-CoreAddMemoryDescriptor (
+VOID // OSDDEBUG add hob reserved mem here, need to split existing descriptors.
+CoreAddMemoryDescriptor ( // OSDDEBUG, need merging logic here, probably, though maybe just better maintenance on calling it
   IN EFI_MEMORY_TYPE       EfiMemoryType,
   IN EFI_GCD_MEMORY_TYPE   GcdMemoryType,
   IN EFI_PHYSICAL_ADDRESS  Start,
   IN UINT64                NumberOfPages,
   IN UINT64                Attributes,
-  IN UINT64                Capabilities
+  IN UINT64                Capabilities,
+  IN EFI_HANDLE            ImageHandle
   )
 {
   EFI_PHYSICAL_ADDRESS  End;
   EFI_STATUS            Status;
   UINTN                 Index;
   UINTN                 FreeIndex;
+
+  DEBUG ((DEBUG_ERROR, "OSDDEBUG 1\n"));
 
   if ((Start & EFI_PAGE_MASK) != 0) {
     return;
@@ -473,7 +491,7 @@ CoreAddMemoryDescriptor (
 
   CoreAcquireGcdMemoryLock ();
   End = Start + LShiftU64 (NumberOfPages, EFI_PAGE_SHIFT) - 1;
-  CoreAddRange (EfiMemoryType, GcdMemoryType, Start, End, Attributes, Capabilities);
+  CoreAddRange (EfiMemoryType, GcdMemoryType, Start, End, Attributes, Capabilities, ImageHandle);
   CoreFreeMemoryMapStack ();
   CoreReleaseGcdMemoryLock ();
 
@@ -649,6 +667,7 @@ CoreConvertPagesEx (
   EFI_GCD_MEMORY_TYPE  EfiGcdMemoryType;
   LIST_ENTRY           *Link;
   EFI_GCD_MAP_ENTRY    *Entry;
+  EFI_HANDLE           ImageHandle;
 
   Entry         = NULL;
   NumberOfBytes = LShiftU64 (NumberOfPages, EFI_PAGE_SHIFT);
@@ -678,6 +697,7 @@ CoreConvertPagesEx (
       if ((Entry->BaseAddress <= Start) && (Entry->EndAddress > Start)) {
         Capabilities = Entry->Capabilities;
         EfiGcdMemoryType = Entry->GcdMemoryType; // OSDDEBUG merge EfiGcdMemoryType and EfiMemoryType?
+        ImageHandle = Entry->ImageHandle;
         break;
       }
     }
@@ -837,7 +857,7 @@ CoreConvertPagesEx (
         !ChangingType ||
         (EfiMemoryType != EfiConventionalMemory))
     {
-      CoreAddRange (EfiMemoryType, EfiGcdMemoryType, Start, RangeEnd, Attribute, Capabilities);
+      CoreAddRange (EfiMemoryType, EfiGcdMemoryType, Start, RangeEnd, Attribute, Capabilities, ImageHandle);
     }
 
     if (ChangingType && (EfiMemoryType == EfiConventionalMemory)) {
@@ -858,7 +878,7 @@ CoreConvertPagesEx (
     //
     // Move any map descriptor stack to general pool
     //
-    CoreFreeMemoryMapStack ();
+    CoreFreeMemoryMapStack (); // OSDDEBUG need to make sure we don't merge ranges for different allocations, if we want to track per handle, this should take care of this. I guess not a big deal if we don't track per allocation
 
     //
     // Bump the starting address, and convert the next range
@@ -992,7 +1012,7 @@ CoreFindFreePagesI (
     //
     // If it's not a free entry, don't bother with it
     //
-    if (Entry->EfiMemoryType != EfiConventionalMemory) {
+    if (Entry->EfiMemoryType != EfiConventionalMemory /* OSDDEBUG I added this, think not needed, probably bad. Should revist ImageHandle addition for DxeCore || Entry->ImageHandle != NULL */) {
       continue;
     }
 

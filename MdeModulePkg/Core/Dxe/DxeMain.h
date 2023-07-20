@@ -328,7 +328,8 @@ CoreAddMemoryDescriptor (
   IN EFI_PHYSICAL_ADDRESS  Start,
   IN UINT64                NumberOfPages,
   IN UINT64                Attributes,
-  IN UINT64                Capabilities
+  IN UINT64                Capabilities,
+  IN EFI_HANDLE            ImageHandle
   );
 
 /**

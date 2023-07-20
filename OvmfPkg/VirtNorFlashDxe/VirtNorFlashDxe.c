@@ -376,6 +376,7 @@ NorFlashFvbInitialize (
   UINT32         FvbNumLba;
   EFI_BOOT_MODE  BootMode;
   UINTN          RuntimeMmioRegionSize;
+  EFI_GCD_MEMORY_SPACE_DESCRIPTOR GcdDescriptor;
 
   DEBUG ((DEBUG_BLKIO, "NorFlashFvbInitialize\n"));
   ASSERT ((Instance != NULL));
@@ -390,13 +391,32 @@ NorFlashFvbInitialize (
   //       is written as the base of the flash region (ie: Instance->DeviceBaseAddress)
   RuntimeMmioRegionSize = (Instance->RegionBaseAddress - Instance->DeviceBaseAddress) + Instance->Size;
 
-  Status = gDS->AddMemorySpace (
-                  EfiGcdMemoryTypeMemoryMappedIo,
+  // Status = gDS->AddMemorySpace (
+  //                 EfiGcdMemoryTypeMemoryMappedIo,
+  //                 Instance->DeviceBaseAddress,
+  //                 RuntimeMmioRegionSize,
+  //                 EFI_MEMORY_UC | EFI_MEMORY_RUNTIME
+  //                 );
+  gBS->AllocatePages (
+    AllocateAddress,
+    EfiMemoryMappedIO,
+    RShiftU64 (RuntimeMmioRegionSize, EFI_PAGE_SHIFT),
+    &Instance->DeviceBaseAddress
+ ); // OSDDEBUG we no longer are adding memory spaces since we have the GCD have the entire addressable mem space, so now we just allocate at an address although maybe we don't do the original adding to gcd til needed?
+  ASSERT_EFI_ERROR (Status);
+
+  Status = gDS->GetMemorySpaceDescriptor (Instance->DeviceBaseAddress, &GcdDescriptor);
+
+  ASSERT_EFI_ERROR (Status);
+
+  // OSDDEBUG may need to set capabilities first
+  Status = gDS->SetMemorySpaceCapabilities (
                   Instance->DeviceBaseAddress,
                   RuntimeMmioRegionSize,
-                  EFI_MEMORY_UC | EFI_MEMORY_RUNTIME
+                  GcdDescriptor.Capabilities | EFI_MEMORY_UC | EFI_MEMORY_RUNTIME
                   );
   ASSERT_EFI_ERROR (Status);
+
 
   Status = gDS->SetMemorySpaceAttributes (
                   Instance->DeviceBaseAddress,
