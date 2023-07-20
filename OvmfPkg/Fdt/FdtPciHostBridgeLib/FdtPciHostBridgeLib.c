@@ -50,14 +50,24 @@ MapGcdMmioSpace (
   )
 {
   EFI_STATUS  Status;
+  EFI_GCD_MEMORY_SPACE_DESCRIPTOR GcdDescriptor;
 
-  Status = gDS->AddMemorySpace (
-                  EfiGcdMemoryTypeMemoryMappedIo,
-                  Base,
-                  Size,
-                  EFI_MEMORY_UC
-                  );
+  // Status = gDS->AddMemorySpace (
+  //                 EfiGcdMemoryTypeMemoryMappedIo,
+  //                 Base,
+  //                 Size,
+  //                 EFI_MEMORY_UC
+  //                 ); // OSDDEBUG again, now we just allocate, not add...this paradigm could potentially be shifted though
+
+  Status = gBS->AllocatePages (
+    AllocateAddress,
+    EfiMemoryMappedIO,
+    RShiftU64 (Size, EFI_PAGE_SHIFT),
+    &Base
+  );
+
   if (EFI_ERROR (Status)) {
+    ASSERT_EFI_ERROR (Status);
     DEBUG ((
       DEBUG_ERROR,
       "%a: failed to add GCD memory space for region [0x%Lx+0x%Lx)\n",
@@ -66,6 +76,31 @@ MapGcdMmioSpace (
       Size
       ));
     return Status;
+  }
+
+  Status = gDS->GetMemorySpaceDescriptor (Base, &GcdDescriptor);
+
+  if (EFI_ERROR (Status)) {
+    DEBUG ((
+      DEBUG_ERROR,
+      "%a: failed to get GCD memory space descriptor for region [0x%Lx+0x%Lx)\n",
+      __func__,
+      Base,
+      Size
+      ));
+    return Status;
+  }
+
+  Status = gDS->SetMemorySpaceCapabilities (Base, Size, GcdDescriptor.Capabilities | EFI_MEMORY_UC);
+  if (EFI_ERROR (Status)) {
+    DEBUG ((
+      DEBUG_ERROR,
+      "%a: failed to set memory space capabilities for region [0x%Lx+0x%Lx)\n",
+      __func__,
+      Base,
+      Size
+      ));
+      return Status;
   }
 
   Status = gDS->SetMemorySpaceAttributes (Base, Size, EFI_MEMORY_UC);

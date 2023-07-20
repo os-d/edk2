@@ -148,6 +148,12 @@ typedef struct {
   /// available attributes is defined in GetMemoryMap().
   ///
   UINT64                  Attributes;
+
+  ///
+  /// Efi memory type of the pages in the region
+  ///
+  EFI_MEMORY_TYPE         EfiMemoryType;
+
   ///
   /// Type of the memory region. Type EFI_GCD_MEMORY_TYPE is defined in the
   /// AddMemorySpace() function description.

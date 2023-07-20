@@ -314,6 +314,7 @@ CoreAllocatePoolPagesI (
 
   Status = CoreAcquireLockOrFail (&mGcdMemorySpaceLock);
   if (EFI_ERROR (Status)) {
+    DEBUG ((DEBUG_ERROR, "OSDDEBUG 210 failed to release gcd lock\n"));
     return NULL;
   }
 
@@ -415,6 +416,9 @@ CoreAllocatePoolI (
     NoPages  = EFI_SIZE_TO_PAGES (Size) + EFI_SIZE_TO_PAGES (Granularity) - 1;
     NoPages &= ~(UINTN)(EFI_SIZE_TO_PAGES (Granularity) - 1);
     Head     = CoreAllocatePoolPagesI (PoolType, NoPages, Granularity, NeedGuard);
+    if (Head == NULL) {
+      DEBUG ((DEBUG_ERROR, "OSDDEBUG 207\n"));
+    }
     if (NeedGuard) {
       Head = AdjustPoolHeadA ((EFI_PHYSICAL_ADDRESS)(UINTN)Head, NoPages, Size);
     }
@@ -438,6 +442,7 @@ CoreAllocatePoolI (
         RemoveEntryList (&Free->Link);
         NewPage   = (VOID *)Free;
         MaxOffset = LIST_TO_SIZE (Index);
+        DEBUG ((DEBUG_ERROR, "OSDDEBUG 206 NewPage 0x%llx MaxOffset 0x%llx\n"));
         goto Carve;
       }
     }
@@ -452,6 +457,7 @@ CoreAllocatePoolI (
                 NeedGuard
                 );
     if (NewPage == NULL) {
+      DEBUG ((DEBUG_ERROR, "OSDDEBUG 205\n"));
       goto Done;
     }
 
