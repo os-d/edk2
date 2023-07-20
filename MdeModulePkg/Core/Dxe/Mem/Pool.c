@@ -312,6 +312,7 @@ CoreAllocatePoolPagesI (
   VOID        *Buffer;
   EFI_STATUS  Status;
 
+  DEBUG ((DEBUG_ERROR, "OSDDEBUG 230\n"));
   Status = CoreAcquireLockOrFail (&mGcdMemorySpaceLock);
   if (EFI_ERROR (Status)) {
     DEBUG ((DEBUG_ERROR, "OSDDEBUG 210 failed to release gcd lock\n"));
@@ -622,6 +623,7 @@ CoreFreePoolPagesI (
   IN UINTN                 NoPages
   )
 {
+  DEBUG ((DEBUG_ERROR, "OSDDEBUG 220\n"));
   CoreAcquireGcdMemoryLock ();
   CoreFreePoolPages (Memory, NoPages);
   CoreReleaseGcdMemoryLock ();

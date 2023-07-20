@@ -489,6 +489,7 @@ CoreAddMemoryDescriptor ( // OSDDEBUG, need merging logic here, probably, though
     return;
   }
 
+  DEBUG ((DEBUG_ERROR, "OSDDEBUG 225\n"));
   CoreAcquireGcdMemoryLock ();
   End = Start + LShiftU64 (NumberOfPages, EFI_PAGE_SHIFT) - 1;
   CoreAddRange (EfiMemoryType, GcdMemoryType, Start, End, Attributes, Capabilities, ImageHandle);
@@ -935,6 +936,7 @@ CoreUpdateMemoryAttributes (
   IN UINT64                NewAttributes
   )
 {
+  DEBUG ((DEBUG_ERROR, "OSDDEBUG 226\n"));
   CoreAcquireGcdMemoryLock ();
 
   //
@@ -1332,6 +1334,7 @@ CoreInternalAllocatePages (
     MaxAddress = Start;
   }
 
+  DEBUG ((DEBUG_ERROR, "OSDDEBUG 221\n"));
   CoreAcquireGcdMemoryLock ();
 
   //
@@ -1476,6 +1479,7 @@ CoreInternalFreePages (
   //
   // Free the range
   //
+  DEBUG ((DEBUG_ERROR, "OSDDEBUG 222\n"));
   CoreAcquireGcdMemoryLock ();
 
   //
@@ -1718,6 +1722,7 @@ CoreGetMemoryMap (
     return EFI_INVALID_PARAMETER;
   }
 
+  DEBUG ((DEBUG_ERROR, "OSDDEBUG 222\n"));
   CoreAcquireGcdMemoryLock ();
 
   //
@@ -2075,6 +2080,7 @@ CoreTerminateMemoryMap (
 
   Status = EFI_SUCCESS;
 
+  DEBUG ((DEBUG_ERROR, "OSDDEBUG 223\n"));
   CoreAcquireGcdMemoryLock ();
 
   if (MapKey == mMemoryMapKey) {
