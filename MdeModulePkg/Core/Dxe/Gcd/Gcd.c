@@ -175,6 +175,8 @@ CoreDumpGcdMemorySpaceMap (
     return;
   }
 
+  // if this is used to debug pool guard, we need this set. For debug code, we don't need pool guards
+  mOnGuarding = TRUE;
   Status = CoreGetMemorySpaceMap (&NumberOfDescriptors, &MemorySpaceMap);
   ASSERT (Status == EFI_SUCCESS && MemorySpaceMap != NULL);
 
@@ -200,6 +202,7 @@ CoreDumpGcdMemorySpaceMap (
 
   DEBUG ((DEBUG_GCD, "\n"));
   FreePool (MemorySpaceMap);
+  mOnGuarding = FALSE;
   DEBUG_CODE_END ();
 }
 
@@ -424,7 +427,9 @@ CoreAllocateGcdMapEntry (
   // cause problem when it's freed (if HeapGuard is enabled).
   //
   mOnGuarding = TRUE;
+  DEBUG ((DEBUG_ERROR, "OSDDEBUG 320\n"));
   *TopEntry   = AllocateZeroPool (sizeof (EFI_GCD_MAP_ENTRY));
+  DEBUG ((DEBUG_ERROR, "OSDDEBUG 321\n"));
   mOnGuarding = FALSE;
   if (*TopEntry == NULL) {
     DEBUG ((DEBUG_ERROR, "OSDDEBUG 204 failing in top\n"));
@@ -432,7 +437,9 @@ CoreAllocateGcdMapEntry (
   }
 
   mOnGuarding  = TRUE;
+  DEBUG ((DEBUG_ERROR, "OSDDEBUG 322\n"));
   *BottomEntry = AllocateZeroPool (sizeof (EFI_GCD_MAP_ENTRY));
+  DEBUG ((DEBUG_ERROR, "OSDDEBUG 323\n"));
   mOnGuarding  = FALSE;
   if (*BottomEntry == NULL) {
     DEBUG ((DEBUG_ERROR, "OSDDEBUG 203 failing in bottom\n"));
@@ -469,6 +476,8 @@ CoreInsertGcdMapEntry (
 {
   ASSERT (Length != 0);
 
+  DEBUG ((DEBUG_ERROR, "OSDDEBUG 336 BaseAddress 0x%llx Entry->BaseAddress 0x%llx Entry->EndAddress 0x%llx TopEntry->BaseAddress 0x%llx TopEntry->EndAddress 0x%llx BottomEntry->BaseAddress 0x%llx BottomEntry->EndAddress 0x%llx\n", BaseAddress, Entry->BaseAddress, Entry->EndAddress, TopEntry->BaseAddress, TopEntry->EndAddress, BottomEntry->BaseAddress, BottomEntry->EndAddress));
+
   if (BaseAddress > Entry->BaseAddress) {
     ASSERT (BottomEntry->Signature == 0);
 
@@ -476,6 +485,7 @@ CoreInsertGcdMapEntry (
     Entry->BaseAddress      = BaseAddress;
     BottomEntry->EndAddress = BaseAddress - 1;
     InsertTailList (Link, &BottomEntry->Link);
+    DEBUG ((DEBUG_ERROR, "OSDDEBUG 337 BaseAddress 0x%llx Entry->BaseAddress 0x%llx BottomEntry->EndAddress 0x%llx\n", BaseAddress, Entry->BaseAddress, BottomEntry->EndAddress));
   }
 
   if ((BaseAddress + Length - 1) < Entry->EndAddress) {
@@ -485,6 +495,15 @@ CoreInsertGcdMapEntry (
     TopEntry->BaseAddress = BaseAddress + Length;
     Entry->EndAddress     = BaseAddress + Length - 1;
     InsertHeadList (Link, &TopEntry->Link);
+    DEBUG ((DEBUG_ERROR, "OSDDEBUG 338 BaseAddress 0x%llx Entry->EndAddress 0x%llx TopEntry->BaseAddress 0x%llx\n", BaseAddress, Entry->EndAddress, TopEntry->BaseAddress));
+  }
+
+  DEBUG ((DEBUG_ERROR, "OSDDEBUG 339 BaseAddress 0x%llx Entry->BaseAddress 0x%llx Entry->EndAddress 0x%llx TopEntry->BaseAddress 0x%llx TopEntry->EndAddress 0x%llx BottomEntry->BaseAddress 0x%llx BottomEntry->EndAddress 0x%llx\n", BaseAddress, Entry->BaseAddress, Entry->EndAddress, TopEntry->BaseAddress, TopEntry->EndAddress, BottomEntry->BaseAddress, BottomEntry->EndAddress));
+
+  if (BaseAddress == 0x7E145000) {
+    CoreReleaseGcdMemoryLock ();
+    CoreDumpGcdMemorySpaceMap (FALSE);
+    CoreAcquireGcdMemoryLock ();
   }
 
   return EFI_SUCCESS;
@@ -533,7 +552,10 @@ CoreMergeGcdMapEntry (
   Entry         = CR (Link, EFI_GCD_MAP_ENTRY, Link, EFI_GCD_MAP_SIGNATURE);
   AdjacentEntry = CR (AdjacentLink, EFI_GCD_MAP_ENTRY, Link, EFI_GCD_MAP_SIGNATURE);
 
+  DEBUG ((DEBUG_ERROR, "OSDDEBUG 340 Entry->BaseAddress 0x%llx Entry->Capabilities 0x%llx AdjacentEntry->BaseAddress 0x%llx AdjacentEntry->Capabilities 0x%llx\n", Entry->BaseAddress, Entry->Capabilities, AdjacentEntry->BaseAddress, AdjacentEntry->Capabilities));
+
   if (Entry->Capabilities != AdjacentEntry->Capabilities) {
+    DEBUG ((DEBUG_ERROR, "OSDDEBUG 341 Entry->BaseAddress 0x%llx Entry->Capabilities 0x%llx AdjacentEntry->BaseAddress 0x%llx AdjacentEntry->Capabilities 0x%llx\n", Entry->BaseAddress, Entry->Capabilities, AdjacentEntry->BaseAddress, AdjacentEntry->Capabilities));
     return EFI_UNSUPPORTED;
   }
 
@@ -811,6 +833,8 @@ CoreConvertSpace (
     ASSERT (FALSE);
   }
 
+  DEBUG ((DEBUG_ERROR, "OSDDEBUG 360 GCD entry count %llu\n", CoreCountGcdMapEntry (&mGcdMemorySpaceMap)));
+
   //
   // Search for the list of descriptors that cover the range BaseAddress to BaseAddress+Length
   //
@@ -898,6 +922,7 @@ CoreConvertSpace (
       case GCD_SET_ATTRIBUTES_MEMORY_OPERATION:
         if ((Attributes & EFI_MEMORY_RUNTIME) != 0) {
           if (((BaseAddress & EFI_PAGE_MASK) != 0) || ((Length & EFI_PAGE_MASK) != 0)) {
+            DEBUG ((DEBUG_ERROR, "OSDDEBUG 330\n"));
             Status = EFI_INVALID_PARAMETER;
             goto Done;
           } // OSDDEBUG could add only set if region is owned by image, but kind of lame, doesn't really protect
@@ -942,7 +967,7 @@ CoreConvertSpace (
   //
   CoreReleaseLock (Lock);
   Status = CoreAllocateGcdMapEntry (&TopEntry, &BottomEntry);
-  DEBUG ((DEBUG_ERROR, "OSDDEBUG 231\n"));
+  DEBUG ((DEBUG_ERROR, "OSDDEBUG 231 Status: %r\n", Status));
   CoreAcquireLock (Lock);
 
   if (EFI_ERROR (Status)) {
@@ -993,6 +1018,7 @@ CoreConvertSpace (
 
       if (EFI_ERROR (Status)) {
         // Freeing the pool can free pages, which grabs the gcd lock, so release it first
+        DEBUG ((DEBUG_ERROR, "OSDDEBUG 331\n"));
         CoreReleaseLock (Lock);
         CoreFreePool (TopEntry);
         CoreFreePool (BottomEntry);
@@ -1008,7 +1034,9 @@ CoreConvertSpace (
   Link = StartLink;
   while (Link != EndLink->ForwardLink) {
     Entry = CR (Link, EFI_GCD_MAP_ENTRY, Link, EFI_GCD_MAP_SIGNATURE);
+    DEBUG ((DEBUG_ERROR, "OSDDEBUG 361 GCD entry count %llu\n", CoreCountGcdMapEntry (&mGcdMemorySpaceMap)));
     CoreInsertGcdMapEntry (Link, Entry, BaseAddress, Length, TopEntry, BottomEntry);
+    DEBUG ((DEBUG_ERROR, "OSDDEBUG 362 GCD entry count %llu\n", CoreCountGcdMapEntry (&mGcdMemorySpaceMap)));
     switch (Operation) {
       //
       // Add operations
@@ -1061,6 +1089,7 @@ CoreConvertSpace (
       // Set capabilities operation
       //
       case GCD_SET_CAPABILITIES_MEMORY_OPERATION:
+        DEBUG ((DEBUG_ERROR, "OSDDEBUG 335 Entry->BaseAddress 0x%llx Entry->EndAddress 0x%llx Capabilities 0x%llx\n", Entry->BaseAddress, Entry->EndAddress, Capabilities));
         Entry->Capabilities = Capabilities;
         break;
     }
@@ -1072,6 +1101,7 @@ CoreConvertSpace (
   // Cleanup
   //
   Status = CoreCleanupGcdMapEntry (TopEntry, BottomEntry, StartLink, EndLink, Map, Lock);
+  DEBUG ((DEBUG_ERROR, "OSDDEBUG 363 GCD entry count %llu\n", CoreCountGcdMapEntry (&mGcdMemorySpaceMap)));
   if (EFI_ERROR (Status)) {
     DEBUG ((DEBUG_ERROR, "OSDDEBUG 201 Cleanup failed\n"));
   }
@@ -1757,10 +1787,16 @@ CoreSetMemorySpaceAttributes (
   IN UINT64                Attributes
   )
 {
+  // EFI_STATUS Status;
   DEBUG ((DEBUG_GCD, "GCD:SetMemorySpaceAttributes(Base=%016lx,Length=%016lx)\n", BaseAddress, Length));
   DEBUG ((DEBUG_GCD, "  Attributes  = %016lx\n", Attributes));
 
-  return CoreConvertSpace (GCD_SET_ATTRIBUTES_MEMORY_OPERATION, (EFI_GCD_MEMORY_TYPE)0, (EFI_GCD_IO_TYPE)0, BaseAddress, Length, 0, Attributes);
+  // CoreAcquireGcdMemoryLock ();
+  // Status = CoreConvertPagesEx (BaseAddress, Length, FALSE, 0, TRUE, Attributes, FALSE, 0);
+  // ASSERT_EFI_ERROR (Status);
+  // CoreReleaseGcdMemoryLock ();
+
+  return CoreConvertSpace (GCD_SET_ATTRIBUTES_MEMORY_OPERATION, (EFI_GCD_MEMORY_TYPE)0, (EFI_GCD_IO_TYPE)0, BaseAddress, Length, 0, Attributes); // OSDDEBUG both should be called here because CoreConvertPagesEx doesn't call into page table!! Or we need to merge functionality
 }
 
 /**
@@ -1793,10 +1829,19 @@ CoreSetMemorySpaceCapabilities (
   DEBUG ((DEBUG_GCD, "GCD:CoreSetMemorySpaceCapabilities(Base=%016lx,Length=%016lx)\n", BaseAddress, Length));
   DEBUG ((DEBUG_GCD, "  Capabilities  = %016lx\n", Capabilities));
 
+  // OSDDEBUG, this needs to be able to split up descriptors if required, which is why I went to CoreConvertPagesEx, because it partially does that. It works for non-heapguard cases because the memory gets allocated first then attributes changed.
+  // maybe simpler answer is getting heap guard a bit smarter
+
   Status = CoreConvertSpace (GCD_SET_CAPABILITIES_MEMORY_OPERATION, (EFI_GCD_MEMORY_TYPE)0, (EFI_GCD_IO_TYPE)0, BaseAddress, Length, Capabilities, 0);
-  if (!EFI_ERROR (Status)) {
-    // OSDDEBUG do we not need this since we don't have separate descriptors? CoreUpdateMemoryAttributes (BaseAddress, RShiftU64 (Length, EFI_PAGE_SHIFT), Capabilities & (~EFI_MEMORY_RUNTIME));
-  }
+  // if (!EFI_ERROR (Status)) {
+  //   // OSDDEBUG do we not need this since we don't have separate descriptors? CoreUpdateMemoryAttributes (BaseAddress, RShiftU64 (Length, EFI_PAGE_SHIFT), Capabilities & (~EFI_MEMORY_RUNTIME));
+  // }
+
+  // OSDDEBUG use this logic as it already handles allocating new gcd entries, whereas coreconvertspace does not. Probably can be merged to one function? Certainly page vs gcd functions can be cleaned and split better
+  // Probably attribute setting should go to here, too?
+  // CoreAcquireGcdMemoryLock ();
+  // Status = CoreConvertPagesEx (BaseAddress, Length, FALSE, 0, FALSE, 0, TRUE, Capabilities);
+  // CoreReleaseGcdMemoryLock ();
 
   return Status;
 }
@@ -1838,11 +1883,12 @@ CoreGetMemorySpaceMap (
 
   *NumberOfDescriptors = 0;
   *MemorySpaceMap      = NULL;
+  // mOnGuarding = TRUE; // OSDDEBUG I added, but really needed here? But already set...hmm
 
   //
   // Take the lock, for entering the loop with the lock held.
   //
-  DEBUG ((DEBUG_ERROR, "OSDDEBUG 234\n"));
+  DEBUG ((DEBUG_ERROR, "OSDDEBUG 234 mOnGuarding %d\n", mOnGuarding));
   CoreAcquireGcdMemoryLock ();
   while (TRUE) {
     //

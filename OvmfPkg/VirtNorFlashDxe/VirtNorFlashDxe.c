@@ -409,6 +409,8 @@ NorFlashFvbInitialize (
 
   ASSERT_EFI_ERROR (Status);
 
+  DEBUG ((DEBUG_ERROR, "OSDDEBUG 400 %a Addr: 0x%llx Capabilities 0x%llx Attributes 0x%llx\n", __func__, Instance->DeviceBaseAddress, GcdDescriptor.Capabilities, GcdDescriptor.Attributes));
+
   // OSDDEBUG may need to set capabilities first
   Status = gDS->SetMemorySpaceCapabilities (
                   Instance->DeviceBaseAddress,
@@ -417,6 +419,9 @@ NorFlashFvbInitialize (
                   );
   ASSERT_EFI_ERROR (Status);
 
+  Status = gDS->GetMemorySpaceDescriptor (Instance->DeviceBaseAddress, &GcdDescriptor);
+
+  DEBUG ((DEBUG_ERROR, "OSDDEBUG 401 %a Addr: 0x%llx Capabilities 0x%llx Attributes 0x%llx\n", __func__, Instance->DeviceBaseAddress, GcdDescriptor.Capabilities, GcdDescriptor.Attributes));
 
   Status = gDS->SetMemorySpaceAttributes (
                   Instance->DeviceBaseAddress,
@@ -424,6 +429,10 @@ NorFlashFvbInitialize (
                   EFI_MEMORY_UC | EFI_MEMORY_RUNTIME
                   );
   ASSERT_EFI_ERROR (Status);
+
+  Status = gDS->GetMemorySpaceDescriptor (Instance->DeviceBaseAddress, &GcdDescriptor);
+
+  DEBUG ((DEBUG_ERROR, "OSDDEBUG 402 %a Addr: 0x%llx Capabilities 0x%llx Attributes 0x%llx\n", __func__, Instance->DeviceBaseAddress, GcdDescriptor.Capabilities, GcdDescriptor.Attributes));
 
   mFlashNvStorageVariableBase = (PcdGet64 (PcdFlashNvStorageVariableBase64) != 0) ?
                                 PcdGet64 (PcdFlashNvStorageVariableBase64) : PcdGet32 (PcdFlashNvStorageVariableBase);

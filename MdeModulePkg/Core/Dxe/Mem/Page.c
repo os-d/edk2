@@ -270,6 +270,7 @@ AllocateMemoryMapEntry (
     // The list is empty, to allocate one page to refuel the list
     //
     DEBUG ((DEBUG_ERROR, "OSDDEBUG allocating mem map mem\n"));
+    // OSDDEBUG should we set mOnGuarding here so we don't allocate guard pages?
     FreeDescriptorEntries = CoreAllocatePoolPages (
                               EfiBootServicesData,
                               EFI_SIZE_TO_PAGES (DEFAULT_PAGE_ALLOCATION_GRANULARITY),
@@ -650,7 +651,9 @@ CoreConvertPagesEx (
   IN BOOLEAN          ChangingType,
   IN EFI_MEMORY_TYPE  NewType,
   IN BOOLEAN          ChangingAttributes,
-  IN UINT64           NewAttributes
+  IN UINT64           NewAttributes,
+  IN BOOLEAN          ChangingCapabilities,
+  IN UINT64           NewCapabilities
   )
 {
   UINT64               NumberOfBytes;
@@ -672,7 +675,7 @@ CoreConvertPagesEx (
   ASSERT ((Start & EFI_PAGE_MASK) == 0);
   ASSERT (End > Start);
   ASSERT_LOCKED (&mGcdMemorySpaceLock);
-  ASSERT ((ChangingType == FALSE) || (ChangingAttributes == FALSE));
+  ASSERT ((ChangingType == FALSE) || (ChangingAttributes == FALSE) || (ChangingCapabilities == FALSE));
 
   if ((NumberOfPages == 0) || ((Start & EFI_PAGE_MASK) != 0) || (Start >= End)) {
     return EFI_INVALID_PARAMETER;
@@ -712,7 +715,7 @@ CoreConvertPagesEx (
         DEBUG ((DEBUG_ERROR | DEBUG_PAGE, "ConvertPages: range %lx - %lx covers multiple entries\n", Start, End));
         return EFI_NOT_FOUND;
       }
-    }
+    } // OSDDEBUG I think this needs to be updated to use multiple descriptors if necessary? Or maybe we only allow converting a single descriptor, which may get split
 
     //
     // Convert range to the end, or to the end of the descriptor
@@ -731,6 +734,10 @@ CoreConvertPagesEx (
 
     if (ChangingAttributes) {
       DEBUG ((DEBUG_PAGE, "ConvertRange: %lx-%lx to attr %lx\n", Start, RangeEnd, NewAttributes));
+    }
+
+    if (ChangingCapabilities) {
+      DEBUG ((DEBUG_PAGE, "ConvertRange: %lx-%lx to cap %lx\n", Start, RangeEnd, NewCapabilities));
     }
 
     if (ChangingType) {
@@ -830,10 +837,15 @@ CoreConvertPagesEx (
     // OSDDEBUG, could be merged with converting gcd mem type?
     if (ChangingType) {
       Attribute = Entry->Attributes;
+      Capabilities = Entry->Capabilities;
       EfiMemoryType   = NewType;
-    } else {
+    } else if (ChangingAttributes) {
       Attribute = NewAttributes;
       EfiMemoryType   = Entry->EfiMemoryType;
+    } else {
+      Capabilities = NewCapabilities;
+      EfiMemoryType = Entry->EfiMemoryType;
+      Attribute = Entry->Attributes;
     }
 
     //
@@ -911,7 +923,7 @@ CoreConvertPages (
   IN EFI_MEMORY_TYPE  NewType
   )
 {
-  return CoreConvertPagesEx (Start, NumberOfPages, TRUE, NewType, FALSE, 0);
+  return CoreConvertPagesEx (Start, NumberOfPages, TRUE, NewType, FALSE, 0, FALSE, 0);
 }
 
 /**
@@ -936,7 +948,7 @@ CoreUpdateMemoryAttributes (
   //
   // Update the attributes to the new value
   //
-  CoreConvertPagesEx (Start, NumberOfPages, FALSE, (EFI_MEMORY_TYPE)0, TRUE, NewAttributes);
+  CoreConvertPagesEx (Start, NumberOfPages, FALSE, (EFI_MEMORY_TYPE)0, TRUE, NewAttributes, FALSE, 0);
 
   CoreReleaseGcdMemoryLock ();
 }
@@ -1405,7 +1417,7 @@ Done:
 **/
 EFI_STATUS
 EFIAPI
-CoreAllocatePages (
+CoreAllocatePages ( // OSDDEBUG need to make sure we aren't getting nonexistent ranges
   IN  EFI_ALLOCATE_TYPE     Type,
   IN  EFI_MEMORY_TYPE       MemoryType,
   IN  UINTN                 NumberOfPages,

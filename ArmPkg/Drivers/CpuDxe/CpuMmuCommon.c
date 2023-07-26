@@ -217,7 +217,9 @@ CpuSetMemoryAttributes (
   if (EFI_ERROR (Status) || (RegionArmAttributes != ArmAttributes) ||
       ((BaseAddress + Length) > (RegionBaseAddress + RegionLength)))
   {
-    return ArmSetMemoryAttributes (BaseAddress, Length, EfiAttributes, 0);
+    Status = ArmSetMemoryAttributes (BaseAddress, Length, EfiAttributes, 0);
+    DEBUG ((DEBUG_ERROR, "OSDDEBUG 333 Status %r\n", Status));
+    return Status;
   } else {
     return EFI_SUCCESS;
   }

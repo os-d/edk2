@@ -1196,6 +1196,38 @@ CoreAllocatePages (
   );
 
 /**
+  Internal function.  Converts a memory range to the specified type or attributes.
+  The range must exist in the memory map.  Either ChangingType or
+  ChangingAttributes must be set, but not both.
+
+  @param  Start                  The first address of the range Must be page
+                                 aligned
+  @param  NumberOfPages          The number of pages to convert
+  @param  ChangingType           Boolean indicating that type value should be changed
+  @param  NewType                The new type for the memory range
+  @param  ChangingAttributes     Boolean indicating that attributes value should be changed
+  @param  NewAttributes          The new attributes for the memory range
+
+  @retval EFI_INVALID_PARAMETER  Invalid parameter
+  @retval EFI_NOT_FOUND          Could not find a descriptor cover the specified
+                                 range  or convertion not allowed.
+  @retval EFI_SUCCESS            Successfully converts the memory range to the
+                                 specified type.
+
+**/
+EFI_STATUS
+CoreConvertPagesEx (
+  IN UINT64           Start,
+  IN UINT64           NumberOfPages,
+  IN BOOLEAN          ChangingType,
+  IN EFI_MEMORY_TYPE  NewType,
+  IN BOOLEAN          ChangingAttributes,
+  IN UINT64           NewAttributes,
+  IN BOOLEAN          ChangingCapabilities,
+  IN UINT64           NewCapabilities
+  );
+
+/**
   Frees previous allocated pages.
 
   @param  Memory                 Base address of memory being freed
