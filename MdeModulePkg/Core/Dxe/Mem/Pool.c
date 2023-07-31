@@ -604,6 +604,8 @@ CoreFreePool (
   EFI_STATUS       Status;
   EFI_MEMORY_TYPE  PoolType;
 
+  DEBUG ((DEBUG_ERROR, "OSDDEBUG 462 Return Addr %p\n", RETURN_ADDRESS (0)));
+
   Status = CoreInternalFreePool (Buffer, &PoolType);
   if (!EFI_ERROR (Status)) {
     CoreUpdateProfile (
@@ -728,6 +730,12 @@ CoreFreePoolI (
   if ((Head->Signature != POOL_HEAD_SIGNATURE) &&
       (Head->Signature != POOLPAGE_HEAD_SIGNATURE))
   {
+    DEBUG ((DEBUG_ERROR, "OSDDEBUG 450 %a Head 0x%llx Head->Signature: 0x%llx\n", __func__, Head, Head->Signature));
+
+    DumpGuardedMemoryBitmap ();
+
+    Free = 0;
+    Free->Signature = 0x9;
     ASSERT (
       Head->Signature == POOL_HEAD_SIGNATURE ||
       Head->Signature == POOLPAGE_HEAD_SIGNATURE

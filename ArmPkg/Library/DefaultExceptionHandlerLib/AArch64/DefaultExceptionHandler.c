@@ -189,6 +189,7 @@ DefaultExceptionHandler (
   )
 {
   CHAR8  Buffer[100];
+  CHAR16 UnicodeBuffer[200];
   UINTN  CharCount;
   INT32  Offset;
 
@@ -197,7 +198,8 @@ DefaultExceptionHandler (
 
     SerialPortWrite ((UINT8 *)Message, sizeof Message - 1);
     if (gST->ConOut != NULL) {
-      AsciiPrint (Message);
+      UnicodeSPrintAsciiFormat (UnicodeBuffer, 200, Buffer);
+      gST->ConOut->OutputString (gST->ConOut, UnicodeBuffer);
     }
 
     CpuDeadLoop ();
@@ -208,7 +210,8 @@ DefaultExceptionHandler (
   CharCount = AsciiSPrint (Buffer, sizeof (Buffer), "\n\n%a Exception at 0x%016lx\n", gExceptionTypeString[ExceptionType], SystemContext.SystemContextAArch64->ELR);
   SerialPortWrite ((UINT8 *)Buffer, CharCount);
   if (gST->ConOut != NULL) {
-    AsciiPrint (Buffer);
+    UnicodeSPrintAsciiFormat (UnicodeBuffer, 200, Buffer);
+    gST->ConOut->OutputString (gST->ConOut, UnicodeBuffer);
   }
 
   DEBUG_CODE_BEGIN ();
