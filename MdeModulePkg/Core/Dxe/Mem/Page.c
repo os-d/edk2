@@ -159,7 +159,6 @@ CoreAddRange (
   // at address 0, then do not zero the page at address 0 because the page is being
   // used for other purposes.
   //
-  DEBUG ((DEBUG_ERROR, "OSDDEBUG 40\n"));
   // if ((EfiMemoryType == EfiConventionalMemory) && (Start == 0) && (End >= EFI_PAGE_SIZE - 1)) {
   //   DEBUG ((DEBUG_ERROR, "OSDDEBUG 50\n"));
   //   if (!gDxeMps.NullPointerDetection.Enabled) {
@@ -220,8 +219,6 @@ CoreAddRange (
     }
   }
 
-   DEBUG ((DEBUG_ERROR, "OSDDEBUG 41\n"));
-
   //
   // Add descriptor
   //
@@ -239,7 +236,6 @@ CoreAddRange (
   mMapStack[mMapDepth].DeviceHandle = NULL;
   mMapStack[mMapDepth].FromPages    = FALSE;
   InsertTailList (&mGcdMemorySpaceMap, &mMapStack[mMapDepth].Link);
-  DEBUG ((DEBUG_ERROR, "OSDDEBUG 42\n"));
 
   mMapDepth += 1;
   ASSERT (mMapDepth < MAX_MAP_DEPTH);
@@ -301,6 +297,8 @@ AllocateMemoryMapEntry (
   //
   Entry = CR (mFreeMemoryMapEntryList.ForwardLink, EFI_GCD_MAP_ENTRY, Link, EFI_GCD_MAP_SIGNATURE);
   RemoveEntryList (&Entry->Link);
+
+  DEBUG ((DEBUG_ERROR, "OSDDEBUG done allocating mem map mem\n"));
 
   return Entry;
 }

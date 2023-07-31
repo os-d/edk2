@@ -53,7 +53,7 @@ EFI_GCD_MAP_ENTRY  mGcdMemorySpaceMapEntryTemplate = {
   },
   0,
   0,
-  0,
+  EFI_MEMORY_RP | EFI_MEMORY_RO | EFI_MEMORY_XP,
   0,
   EfiConventionalMemory,
   EfiGcdMemoryTypeNonExistent,
@@ -2887,6 +2887,8 @@ CoreInitializeGcdServices (
           //   Descriptor.Capabilities,
           //   gDxeCoreImageHandle
           //   );
+          // OSDDEBUG we have two HOBs that are duplicates, seems to be common for DXECore and Stack HOBs, so we will see two failed allocations, which is ok
+          DEBUG ((DEBUG_ERROR, "OSDDEBUG 451 %a AllocateAddress 0x%llx Length 0x%llx\n", __func__, MemoryHob->AllocDescriptor.MemoryBaseAddress, MemoryHob->AllocDescriptor.MemoryLength));
           CoreAllocatePages ( // We are allocating pages here because these are already allocated ranges and they should exist in the GCD already
             AllocateAddress,
             MemoryHob->AllocDescriptor.MemoryType != EfiConventionalMemory ? MemoryHob->AllocDescriptor.MemoryType : EfiReservedMemoryType,
