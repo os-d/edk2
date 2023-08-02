@@ -173,7 +173,7 @@ extern GUID  gDxeMemoryProtectionSettingsGuid;
             TRUE, /* Stack Guard */                             \
             TRUE, /* Stack Execution Protection */              \
             {     /* NULL Pointer Detection */                  \
-              .Enabled                                = FALSE,   \
+              .Enabled                                = TRUE,   \
               .DisableEndOfDxe                        = FALSE,  \
               .NonstopModeEnabled                     = FALSE    \
             },                                                  \
@@ -205,7 +205,7 @@ extern GUID  gDxeMemoryProtectionSettingsGuid;
             },                                                  \
             { /* Heap Guard */                                  \
               .PageGuardEnabled                       = FALSE,   \
-              .PoolGuardEnabled                       = TRUE,   \
+              .PoolGuardEnabled                       = FALSE,  \
               .FreedMemoryGuardEnabled                = FALSE,  \
               .NonstopModeEnabled                     = FALSE,   \
               .GuardAlignedToTail                     = FALSE   \

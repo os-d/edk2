@@ -163,14 +163,16 @@ CoreAddRange (
   // at address 0, then do not zero the page at address 0 because the page is being
   // used for other purposes.
   //
-  // if ((EfiMemoryType == EfiConventionalMemory) && (Start == 0) && (End >= EFI_PAGE_SIZE - 1)) {
-  //   DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 50\n"));
-  //   if (!gDxeMps.NullPointerDetection.Enabled) {
-  //     DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 51\n"));
-  //     SetMem ((VOID *)(UINTN)Start, EFI_PAGE_SIZE, 0);
-  //     DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 52\n"));
-  //   }
-  // } // OSDDEBUG need to enable this again
+
+  DEBUG ((DEBUG_ERROR, "OSDDEBUG 50 Enabled: %d\n", gDxeMps.NullPointerDetection.Enabled));
+  if ((EfiMemoryType == EfiConventionalMemory) && (Start == 0) && (End >= EFI_PAGE_SIZE - 1)) {
+    DEBUG ((DEBUG_ERROR, "OSDDEBUG 50 Enabled: %d\n", gDxeMps.NullPointerDetection.Enabled));
+    // if (!gDxeMps.NullPointerDetection.Enabled) {
+    //   DEBUG ((DEBUG_ERROR, "OSDDEBUG 51\n"));
+    //   SetMem ((VOID *)(UINTN)Start, EFI_PAGE_SIZE, 0);
+    //   DEBUG ((DEBUG_ERROR, "OSDDEBUG 52\n"));
+    // }
+  } // OSDDEBUG need to enable this again
 
   
 
