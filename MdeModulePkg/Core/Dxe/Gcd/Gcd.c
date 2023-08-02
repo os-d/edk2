@@ -166,39 +166,32 @@ CoreDumpGcdMemorySpaceMap (
   )
 {
   DEBUG_CODE_BEGIN ();
-  EFI_STATUS                       Status;
-  UINTN                            NumberOfDescriptors;
-  EFI_GCD_MEMORY_SPACE_DESCRIPTOR  *MemorySpaceMap;
-  UINTN                            Index;
-
-  // if this is used to debug pool guard, we need this set. For debug code, we don't need pool guards
-  mOnGuarding = TRUE;
-  Status = CoreGetMemorySpaceMap (&NumberOfDescriptors, &MemorySpaceMap);
-  ASSERT (Status == EFI_SUCCESS && MemorySpaceMap != NULL);
+  LIST_ENTRY                       *Link;
+  EFI_GCD_MAP_ENTRY                *Entry;
 
   if (InitialMap) {
     DEBUG ((DEBUG_GCD, "GCD:Initial GCD Memory Space Map\n"));
   }
 
-  DEBUG ((DEBUG_GCD, "GCDMemType EFIMemType Range                             Capabilities     Attributes      \n"));
-  DEBUG ((DEBUG_GCD, "========== ========== ================================= ================ ================\n"));
-  for (Index = 0; Index < NumberOfDescriptors; Index++) {
+  DEBUG ((DEBUG_GCD, "GCDMemType EFIMemType Range                             Capabilities     Attributes       FromPages\n"));
+  DEBUG ((DEBUG_GCD, "========== ========== ================================= ================ ================ =========\n"));
+  for (Link = mGcdMemorySpaceMap.ForwardLink; Link != &mGcdMemorySpaceMap; Link = Link->ForwardLink) {
+    Entry = CR (Link, EFI_GCD_MAP_ENTRY, Link, EFI_GCD_MAP_SIGNATURE);
     DEBUG ((
       DEBUG_GCD,
-      "%a  %a  %016lx-%016lx %016lx %016lx%c\n",
-      mGcdMemoryTypeNames[MIN (MemorySpaceMap[Index].GcdMemoryType, EfiGcdMemoryTypeMaximum)],
-      mEfiMemoryTypeNames[MIN (MemorySpaceMap[Index].EfiMemoryType, EfiMaxMemoryType)],
-      MemorySpaceMap[Index].BaseAddress,
-      MemorySpaceMap[Index].BaseAddress + MemorySpaceMap[Index].Length - 1,
-      MemorySpaceMap[Index].Capabilities,
-      MemorySpaceMap[Index].Attributes,
-      MemorySpaceMap[Index].ImageHandle == NULL ? ' ' : '*'
+      "%a  %a  %016lx-%016lx %016lx %016lx%c %d\n",
+      mGcdMemoryTypeNames[MIN (Entry->GcdMemoryType, EfiGcdMemoryTypeMaximum)],
+      mEfiMemoryTypeNames[MIN (Entry->EfiMemoryType, EfiMaxMemoryType)],
+      Entry->BaseAddress,
+      Entry->EndAddress,
+      Entry->Capabilities,
+      Entry->Attributes,
+      Entry->ImageHandle == NULL ? ' ' : '*',
+      Entry->FromPages
       ));
   }
 
   DEBUG ((DEBUG_GCD, "\n"));
-  FreePool (MemorySpaceMap);
-  mOnGuarding = FALSE;
   DEBUG_CODE_END ();
 }
 

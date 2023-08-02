@@ -150,6 +150,10 @@ CoreAddRange (
 
   DEBUG ((DEBUG_PAGE, "AddRange: %lx-%lx to %d\n", Start, End, EfiMemoryType));
 
+  if ((UINTN)Start == 0x7D544000 || (UINTN)Start == 0x7D4F8000) {
+    CoreDumpGcdMemorySpaceMap (FALSE);
+  }
+
   //
   // If memory of type EfiConventionalMemory is being added that includes the page
   // starting at address 0, then zero the page starting at address 0.  This has
@@ -240,8 +244,6 @@ CoreAddRange (
   mMapDepth += 1;
   ASSERT (mMapDepth < MAX_MAP_DEPTH);
 
-  
-
   return;
 }
 
@@ -272,13 +274,15 @@ AllocateMemoryMapEntry (
     // The list is empty, to allocate one page to refuel the list
     //
     DEBUG ((DEBUG_ERROR, "OSDDEBUG allocating mem map mem\n"));
-    // OSDDEBUG should we set mOnGuarding here so we don't allocate guard pages?
+    CoreDumpGcdMemorySpaceMap (FALSE);
     FreeDescriptorEntries = CoreAllocatePoolPages (
                               EfiBootServicesData,
                               EFI_SIZE_TO_PAGES (DEFAULT_PAGE_ALLOCATION_GRANULARITY),
                               DEFAULT_PAGE_ALLOCATION_GRANULARITY,
                               FALSE
                               );
+    CoreDumpGcdMemorySpaceMap (FALSE);
+    DEBUG ((DEBUG_ERROR, "OSDDEBUG 615 allocating mem map mem FreeDescriptorEntries: 0x%llx\n", FreeDescriptorEntries));
     if (FreeDescriptorEntries != NULL) {
       //
       // Enqueue the free memory map entries into the list
@@ -323,6 +327,7 @@ CoreFreeMemoryMapStack (
   // If already freeing the map stack, then return
   //
   if (mFreeMapStack != 0) {
+    DEBUG ((DEBUG_ERROR, "OSDDEBUG 620 mFreeMapStack: %u\n", mFreeMapStack));
     return;
   }
 
@@ -335,7 +340,8 @@ CoreFreeMemoryMapStack (
     //
     // Dequeue an memory map entry from mFreeMemoryMapEntryList
     //
-    Entry = AllocateMemoryMapEntry ();
+    
+    Entry = AllocateMemoryMapEntry (); 
 
     ASSERT (Entry);
 
@@ -344,7 +350,7 @@ CoreFreeMemoryMapStack (
     //
     mMapDepth -= 1;
 
-    if (mMapStack[mMapDepth].Link.ForwardLink != NULL) {
+    if (mMapStack[mMapDepth].Link.ForwardLink != NULL/*mMapStack[mMapDepth].FromPages == FALSE*/) {
       //
       // Move this entry to general memory
       //
@@ -359,17 +365,32 @@ CoreFreeMemoryMapStack (
       //
       for (Link2 = mGcdMemorySpaceMap.ForwardLink; Link2 != &mGcdMemorySpaceMap; Link2 = Link2->ForwardLink) {
         Entry2 = CR (Link2, EFI_GCD_MAP_ENTRY, Link, EFI_GCD_MAP_SIGNATURE);
-        if (Entry2->FromPages && (Entry2->BaseAddress > Entry->BaseAddress)) {
+        if (Entry2->FromPages && (Entry2->BaseAddress > Entry->BaseAddress)) { // OSDDEBUG are we missing things that are not FromPages?
+          DEBUG ((DEBUG_ERROR, "OSDDEBUG 623 found place Entry2->BaseAddress: 0x%llx Entry2->EndAddress: 0x%llx Entry->BaseAddress: 0x%llx Entry->EndAddress: 0x%llx\n", Entry2->BaseAddress, Entry2->EndAddress, Entry->BaseAddress, Entry->EndAddress));
           break;
         }
       }
 
+      DEBUG ((DEBUG_ERROR, "OSDDEBUG 624 found place Entry2->BaseAddress: 0x%llx Entry2->EndAddress: 0x%llx Entry->BaseAddress: 0x%llx Entry->EndAddress: 0x%llx\n", Entry2->BaseAddress, Entry2->EndAddress, Entry->BaseAddress, Entry->EndAddress));
+      if ((UINTN)Entry->BaseAddress == 0x7D544000 || (UINTN)Entry->BaseAddress == 0x7D4F8000) {
+        DEBUG ((DEBUG_ERROR, "OSDDEBUG 610 %a\n", __func__));
+        CoreDumpGcdMemorySpaceMap (FALSE);
+      }    
       InsertTailList (Link2, &Entry->Link);
+      if ((UINTN)Entry->BaseAddress == 0x7D544000 || (UINTN)Entry->BaseAddress == 0x7D4F8000) {
+        DEBUG ((DEBUG_ERROR, "OSDDEBUG 610 %a\n", __func__));
+        CoreDumpGcdMemorySpaceMap (FALSE);
+      }
     } else {
       //
       // This item of mMapStack[mMapDepth] has already been dequeued from mMemorySpaceMap list,
       // so here no need to move it to memory.
       //
+      if ((UINTN)Entry->BaseAddress == 0x7D544000 || (UINTN)Entry->BaseAddress == 0x7D4F8000) {
+        DEBUG ((DEBUG_ERROR, "OSDDEBUG 610 %a\n", __func__));
+        CoreDumpGcdMemorySpaceMap (FALSE);
+      }
+      DEBUG ((DEBUG_ERROR, "OSDDEBUG 621 already dequeued Entry->BaseAddress 0x%llx Entry->EndAddress 0x%llx\n", Entry->BaseAddress, Entry->EndAddress));
       InsertTailList (&mFreeMemoryMapEntryList, &Entry->Link);
     }
   }
@@ -754,6 +775,9 @@ CoreConvertPagesEx (
           DEBUG ((DEBUG_ERROR | DEBUG_PAGE, "the pages to free have been freed\n"));
         } else {
           DEBUG ((DEBUG_ERROR | DEBUG_PAGE, "the pages to allocate have been allocated\n"));
+          CoreReleaseLock (&mGcdMemorySpaceLock);
+          CoreDumpGcdMemorySpaceMap (FALSE);
+          CoreAcquireLock (&mGcdMemorySpaceLock);
         }
 
         return EFI_NOT_FOUND;
@@ -786,6 +810,11 @@ CoreConvertPagesEx (
       }
     }
 
+    if ((UINTN)Start == 0x7D544000 || (UINTN)Start == 0x7D4F8000) {
+        DEBUG ((DEBUG_ERROR, "OSDDEBUG 611 %a\n", __func__));
+        CoreDumpGcdMemorySpaceMap (FALSE);
+      }
+
     //
     // Pull range out of descriptor
     //
@@ -803,6 +832,7 @@ CoreConvertPagesEx (
       //
       // Pull it out of the center, clip current
       //
+      DEBUG ((DEBUG_ERROR, "OSDDEBUG 601 clipping center descriptor new BaseAddress: 0x%llx new EndAddress: 0x%llx Entry->BaseAddress: 0x%llx\n", RangeEnd+1, Entry->EndAddress, Entry->BaseAddress));
 
       //
       // Add a new one
@@ -816,7 +846,7 @@ CoreConvertPagesEx (
       mMapStack[mMapDepth].EndAddress    = Entry->EndAddress;
       mMapStack[mMapDepth].ImageHandle   = Entry->ImageHandle;
       mMapStack[mMapDepth].DeviceHandle  = Entry->DeviceHandle;
-      mMapStack[mMapDepth].FromPages     = Entry->FromPages;
+      mMapStack[mMapDepth].FromPages     = FALSE; // OSDDEBUG was getting FromPages from here, but that's wrong! We are in the stack here
 
       //
       // Inherit Attribute from the Memory Descriptor that is being clipped
@@ -869,7 +899,14 @@ CoreConvertPagesEx (
         (EfiMemoryType != EfiConventionalMemory))
     {
       CoreAddRange (EfiMemoryType, EfiGcdMemoryType, Start, RangeEnd, Attribute, Capabilities, ImageHandle);
+      
+      if ((UINTN)Start == 0x7D544000 || (UINTN)Start == 0x7D4F8000) {
+        DEBUG ((DEBUG_ERROR, "OSDDEBUG 610 %a\n", __func__));
+        CoreDumpGcdMemorySpaceMap (FALSE);
+      }
     }
+
+    CoreFreeMemoryMapStack (); // OSDDEBUG may not be a good idea to do in middle of conversion
 
     if (ChangingType && (EfiMemoryType == EfiConventionalMemory)) {
       //
@@ -889,12 +926,17 @@ CoreConvertPagesEx (
     //
     // Move any map descriptor stack to general pool
     //
-    CoreFreeMemoryMapStack (); // OSDDEBUG need to make sure we don't merge ranges for different allocations, if we want to track per handle, this should take care of this. I guess not a big deal if we don't track per allocation
+    // CoreFreeMemoryMapStack (); // OSDDEBUG need to make sure we don't merge ranges for different allocations, if we want to track per handle, this should take care of this. I guess not a big deal if we don't track per allocation
 
     //
     // Bump the starting address, and convert the next range
     //
     Start = RangeEnd + 1;
+  }
+
+  if ((UINTN)Start == 0x7D544000 || (UINTN)Start == 0x7D4F8000) {
+   DEBUG ((DEBUG_ERROR, "OSDDEBUG 616 %a\n", __func__)); // OSDDEBUG messed up here, entries covering same range, but ok here on previous iteration
+   CoreDumpGcdMemorySpaceMap (FALSE);
   }
 
   //
@@ -2024,6 +2066,7 @@ CoreAllocatePoolPages (
   )
 {
   UINT64  Start;
+  EFI_STATUS Status;
 
   //
   // Find the pages to convert
@@ -2043,9 +2086,17 @@ CoreAllocatePoolPages (
     DEBUG ((DEBUG_ERROR | DEBUG_PAGE, "AllocatePoolPages: failed to allocate %d pages\n", (UINT32)NumberOfPages));
   } else {
     if (NeedGuard) {
-      CoreConvertPagesWithGuard (Start, NumberOfPages, PoolType);
+      Status = CoreConvertPagesWithGuard (Start, NumberOfPages, PoolType); // OSDDEBUG added the failure here, Start = 0, probably is legit?
+      DEBUG((DEBUG_ERROR, "OSDDEBUG 531 %a Start 0x%llx NumberOfPages 0x%llx Status %r\n", __func__, Start, NumberOfPages, Status));
+      if (EFI_ERROR (Status)) {
+        Start = 0;
+      }
     } else {
-      CoreConvertPages (Start, NumberOfPages, PoolType);
+      Status = CoreConvertPages (Start, NumberOfPages, PoolType);
+      DEBUG((DEBUG_ERROR, "OSDDEBUG 612 %a Start 0x%llx NumberOfPages 0x%llx Status %r\n", __func__, Start, NumberOfPages, Status));
+      if (EFI_ERROR (Status)) {
+        Start = 0;
+      }
     }
   }
 

@@ -2848,4 +2848,10 @@ MergeMemoryMap (
   IN UINTN                      DescriptorSize
   );
 
+VOID
+EFIAPI
+CoreDumpGcdMemorySpaceMap (
+  BOOLEAN  InitialMap
+  );
+
 #endif

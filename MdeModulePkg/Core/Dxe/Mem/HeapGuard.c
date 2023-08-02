@@ -1094,13 +1094,20 @@ CoreConvertPagesWithGuard (
   )
 {
   UINT64  OldStart;
-  UINTN   OldPages;
+  UINTN   OldPages; // OSDDEBUG something wrong here, so many pages?
 
   if (NewType == EfiConventionalMemory) {
     OldStart = Start;
     OldPages = NumberOfPages;
 
+    if (Start == 0x7DED0000) {
+      DEBUG ((DEBUG_ERROR, "OSDDEBUG 550 %a Start: 0x%llx NumberOfPages: 0x%llx\n", __func__, Start, NumberOfPages));
+    }
+
     AdjustMemoryF (&Start, &NumberOfPages);
+    if (Start == 0x7DED0000) {
+      DEBUG ((DEBUG_ERROR, "OSDDEBUG 551 %a Start: 0x%llx NumberOfPages: 0x%llx\n", __func__, Start, NumberOfPages));
+    }
     //
     // It's safe to unset Guard page inside memory lock because there should
     // be no memory allocation occurred in updating memory page attribute at
@@ -1113,7 +1120,19 @@ CoreConvertPagesWithGuard (
       return EFI_SUCCESS;
     }
   } else {
+    if (Start == 0x7DED0000) {
+      DEBUG ((DEBUG_ERROR, "OSDDEBUG 552 %a Start: 0x%llx NumberOfPages: 0x%llx\n", __func__, Start, NumberOfPages));
+    }
     AdjustMemoryA (&Start, &NumberOfPages);
+     if (Start == 0x7DED0000) {
+      DEBUG ((DEBUG_ERROR, "OSDDEBUG 553 %a Start: 0x%llx NumberOfPages: 0x%llx\n", __func__, Start, NumberOfPages));
+     }
+  }
+
+  if (Start == 0x7DED0000) {
+    CoreReleaseLock (&mGcdMemorySpaceLock);
+    CoreDumpGcdMemorySpaceMap (FALSE);
+    CoreAcquireLock (&mGcdMemorySpaceLock);
   }
 
   return CoreConvertPages (Start, NumberOfPages, NewType);
@@ -1576,6 +1595,8 @@ PromoteGuardedFreePages (
   if (!gDxeMps.HeapGuard.FreedMemoryGuardEnabled) {
     return FALSE;
   }
+
+  DEBUG ((DEBUG_ERROR, "OSDDEBUG 600 %a\n", __func__));
 
   //
   // Similar to memory allocation service, always search the freed pages in
