@@ -275,7 +275,7 @@ SetUefiImageProtectionAttributes (
       //
       // DATA
       //
-      DEBUG ((DEBUG_ERROR, "OSDDEBUG 403\n"));
+      DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 403\n"));
       SetUefiImageMemoryAttributes (
         CurrentBase,
         ImageRecordCodeSection->CodeSegmentBase - CurrentBase,
@@ -286,7 +286,7 @@ SetUefiImageProtectionAttributes (
     //
     // CODE
     //
-    DEBUG ((DEBUG_ERROR, "OSDDEBUG 404\n"));
+    DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 404\n"));
     SetUefiImageMemoryAttributes (
       ImageRecordCodeSection->CodeSegmentBase,
       ImageRecordCodeSection->CodeSegmentSize,
@@ -303,7 +303,7 @@ SetUefiImageProtectionAttributes (
     //
     // DATA
     //
-    DEBUG ((DEBUG_ERROR, "OSDDEBUG 405\n"));
+    DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 405\n"));
     SetUefiImageMemoryAttributes (
       CurrentBase,
       ImageEnd - CurrentBase,
@@ -635,7 +635,7 @@ UnprotectUefiImage (
                     );
 
     if (ImageRecord->ImageBase == (EFI_PHYSICAL_ADDRESS)(UINTN)LoadedImage->ImageBase) {
-      DEBUG ((DEBUG_ERROR, "OSDDEBUG 406\n"));
+      DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 406\n"));
       SetUefiImageMemoryAttributes (
         ImageRecord->ImageBase,
         ImageRecord->ImageSize,
@@ -850,7 +850,7 @@ InitializeDxeNxMemoryProtectionPolicy (
   while ((UINTN)MemoryMapEntry < (UINTN)MemoryMapEnd) {
     Attributes = GetPermissionAttributeForMemoryType (MemoryMapEntry->Type);
     if (Attributes != 0) {
-      DEBUG ((DEBUG_ERROR, "OSDDEBUG 407\n"));
+      DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 407\n"));
       SetUefiImageMemoryAttributes (
         MemoryMapEntry->PhysicalStart,
         LShiftU64 (MemoryMapEntry->NumberOfPages, EFI_PAGE_SHIFT),
@@ -954,7 +954,7 @@ InitializeDxeStackMemoryProtectionPolicy (
   if ((StackBase != 0) && (StackLength != 0)) {
     // Set EFI_MEMORY_XP if stack execution protection is enabled.
     if (gDxeMps.StackExecutionProtectionEnabled) {
-      DEBUG ((DEBUG_ERROR, "OSDDEBUG 408\n"));
+      DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 408\n"));
       SetUefiImageMemoryAttributes (
         StackBase,
         StackLength,
@@ -964,7 +964,7 @@ InitializeDxeStackMemoryProtectionPolicy (
 
     // Set EFI_MEMORY_RP if stack guard is enabled.
     if (gDxeMps.CpuStackGuardEnabled) {
-      DEBUG ((DEBUG_ERROR, "OSDDEBUG 401\n"));
+      DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 401\n"));
       SetUefiImageMemoryAttributes (
         StackBase,
         EFI_PAGE_SIZE,
@@ -1056,7 +1056,7 @@ MemoryProtectionCpuArchProtocolNotify (
 
   if (gDxeMps.NullPointerDetection.Enabled) {
     DEBUG ((DEBUG_INFO, "Applying NULL Detection\n"));
-    DEBUG ((DEBUG_ERROR, "OSDDEBUG 409\n"));
+    DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 409\n"));
     SetUefiImageMemoryAttributes (
       (UINTN)NULL,
       EFI_PAGE_SIZE,
@@ -1112,7 +1112,7 @@ MemoryProtectionExitBootServicesCallback (
   if (DXE_MPS_IS_IMAGE_PROTECTION_ENABLED (&gDxeMps)) {
     for (Link = gRuntime->ImageHead.ForwardLink; Link != &gRuntime->ImageHead; Link = Link->ForwardLink) {
       RuntimeImage = BASE_CR (Link, EFI_RUNTIME_IMAGE_ENTRY, Link);
-      DEBUG ((DEBUG_ERROR, "OSDDEBUG 402\n"));
+      DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 402\n"));
       SetUefiImageMemoryAttributes ((UINT64)(UINTN)RuntimeImage->ImageBase, ALIGN_VALUE (RuntimeImage->ImageSize, EFI_PAGE_SIZE), 0);
     }
   }

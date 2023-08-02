@@ -218,7 +218,7 @@ CpuSetMemoryAttributes (
       ((BaseAddress + Length) > (RegionBaseAddress + RegionLength)))
   {
     Status = ArmSetMemoryAttributes (BaseAddress, Length, EfiAttributes, 0);
-    DEBUG ((DEBUG_ERROR, "OSDDEBUG 333 Status %r\n", Status));
+    DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 333 Status %r\n", Status));
     return Status;
   } else {
     return EFI_SUCCESS;
