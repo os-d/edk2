@@ -229,7 +229,7 @@ CoreInternalAllocatePool (
   // Base on the EFI spec, return status of EFI_OUT_OF_RESOURCES
   //
   if (Size > MAX_POOL_SIZE) {
-    DEBUG ((DEBUG_ERROR, "OSDDEBUG 312\n"));
+    DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 312\n"));
     return EFI_OUT_OF_RESOURCES;
   }
 
@@ -238,16 +238,16 @@ CoreInternalAllocatePool (
   //
   // Acquire the memory lock and make the allocation
   //
-  DEBUG ((DEBUG_ERROR, "OSDDEBUG 316 acquiring pool lock\n"));
+  DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 316 acquiring pool lock\n"));
   Status = CoreAcquireLockOrFail (&mPoolMemoryLock);
   if (EFI_ERROR (Status)) {
-    DEBUG ((DEBUG_ERROR, "OSDDEBUG 313\n"));
+    DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 313\n"));
     return EFI_OUT_OF_RESOURCES;
   }
 
   *Buffer = CoreAllocatePoolI (PoolType, Size, NeedGuard);
   CoreReleaseLock (&mPoolMemoryLock);
-  DEBUG ((DEBUG_ERROR, "OSDDEBUG 317 releasing pool lock\n"));
+  DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 317 releasing pool lock\n"));
   return (*Buffer != NULL) ? EFI_SUCCESS : EFI_OUT_OF_RESOURCES;
 }
 
@@ -321,10 +321,10 @@ CoreAllocatePoolPagesI (
   ASSERT_LOCKED (&mPoolMemoryLock);
   CoreReleaseLock (&mPoolMemoryLock);
 
-  DEBUG ((DEBUG_ERROR, "OSDDEBUG 230\n"));
+  DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 230\n"));
   Status = CoreAcquireLockOrFail (&mGcdMemorySpaceLock);
   if (EFI_ERROR (Status)) {
-    DEBUG ((DEBUG_ERROR, "OSDDEBUG 210 failed to release gcd lock\n"));
+    DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 210 failed to release gcd lock\n"));
     CoreAcquireLock (&mPoolMemoryLock);
     return NULL;
   }
@@ -411,7 +411,7 @@ CoreAllocatePoolI (
   Index = SIZE_TO_LIST (Size);
   Pool  = LookupPoolHead (PoolType);
   if (Pool == NULL) {
-    DEBUG ((DEBUG_ERROR, "OSDDEBUG 311\n"));
+    DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 311\n"));
     return NULL;
   }
 
@@ -430,7 +430,7 @@ CoreAllocatePoolI (
     NoPages &= ~(UINTN)(EFI_SIZE_TO_PAGES (Granularity) - 1);
     Head     = CoreAllocatePoolPagesI (PoolType, NoPages, Granularity, NeedGuard);
     if (Head == NULL) {
-      DEBUG ((DEBUG_ERROR, "OSDDEBUG 207\n"));
+      DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 207\n"));
     }
     if (NeedGuard) {
       Head = AdjustPoolHeadA ((EFI_PHYSICAL_ADDRESS)(UINTN)Head, NoPages, Size);
@@ -455,7 +455,7 @@ CoreAllocatePoolI (
         RemoveEntryList (&Free->Link);
         NewPage   = (VOID *)Free;
         MaxOffset = LIST_TO_SIZE (Index);
-        DEBUG ((DEBUG_ERROR, "OSDDEBUG 206 NewPage 0x%llx MaxOffset 0x%llx\n"));
+        DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 206 NewPage 0x%llx MaxOffset 0x%llx\n"));
         goto Carve;
       }
     }
@@ -470,7 +470,7 @@ CoreAllocatePoolI (
                 NeedGuard
                 );
     if (NewPage == NULL) {
-      DEBUG ((DEBUG_ERROR, "OSDDEBUG 205\n"));
+      DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 205\n"));
       goto Done;
     }
 
@@ -578,11 +578,11 @@ CoreInternalFreePool (
     return EFI_INVALID_PARAMETER;
   }
 
-  DEBUG ((DEBUG_ERROR, "OSDDEBUG 314 acquiring pool lock\n"));
+  DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 314 acquiring pool lock\n"));
   CoreAcquireLock (&mPoolMemoryLock);
   Status = CoreFreePoolI (Buffer, PoolType);
   CoreReleaseLock (&mPoolMemoryLock);
-  DEBUG ((DEBUG_ERROR, "OSDDEBUG 315 releasing pool lock\n"));
+  DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 315 releasing pool lock\n"));
   return Status;
 }
 
@@ -604,7 +604,7 @@ CoreFreePool (
   EFI_STATUS       Status;
   EFI_MEMORY_TYPE  PoolType;
 
-  DEBUG ((DEBUG_ERROR, "OSDDEBUG 462 Return Addr %p\n", RETURN_ADDRESS (0)));
+  DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 462 Return Addr %p\n", RETURN_ADDRESS (0)));
 
   Status = CoreInternalFreePool (Buffer, &PoolType);
   if (!EFI_ERROR (Status)) {
@@ -638,7 +638,7 @@ CoreFreePoolPagesI (
   IN UINTN                 NoPages
   )
 {
-  DEBUG ((DEBUG_ERROR, "OSDDEBUG 220\n"));
+  DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 220\n"));
   CoreAcquireGcdMemoryLock ();
   CoreFreePoolPages (Memory, NoPages);
   CoreReleaseGcdMemoryLock ();
@@ -728,13 +728,13 @@ CoreFreePoolI (
   ASSERT (Head != NULL);
 
   if ((UINTN)Head == (UINTN)0x7DED0000) {
-    DEBUG ((DEBUG_ERROR, "OSDDEBUG 530 %a Head 0x%llx Head->Signature: 0x%llx\n", __func__, Head, Head->Signature));
+    DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 530 %a Head 0x%llx Head->Signature: 0x%llx\n", __func__, Head, Head->Signature));
   }
 
   if ((Head->Signature != POOL_HEAD_SIGNATURE) &&
       (Head->Signature != POOLPAGE_HEAD_SIGNATURE))
   {
-    DEBUG ((DEBUG_ERROR, "OSDDEBUG 450 %a Head 0x%llx Head->Signature: 0x%llx\n", __func__, Head, Head->Signature));
+    DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 450 %a Head 0x%llx Head->Signature: 0x%llx\n", __func__, Head, Head->Signature));
 
     DumpGuardedMemoryBitmap ();
 
