@@ -35,44 +35,44 @@ STATIC MEMORY_PROTECTION_SETTINGS_PRIVATE  *mMpsp = NULL;
 {                                                     \
   DXE_MEMORY_PROTECTION_SIGNATURE,                    \
   DXE_MEMORY_PROTECTION_SETTINGS_CURRENT_VERSION,     \
-  TRUE, /* Stack Guard */                             \
-  TRUE, /* Stack Execution Protection */              \
+  FALSE, /* Stack Guard */                             \
+  FALSE, /* Stack Execution Protection */              \
   {     /* NULL Pointer Detection */                  \
-    .Enabled                                = TRUE,   \
+    .Enabled                                = FALSE,   \
     .DisableEndOfDxe                        = FALSE,  \
-    .NonstopModeEnabled                     = TRUE    \
+    .NonstopModeEnabled                     = FALSE    \
   },                                                  \
   { /* Image Protection */                            \
-    .ProtectImageFromUnknown                = TRUE,   \
-    .ProtectImageFromFv                     = TRUE    \
+    .ProtectImageFromUnknown                = FALSE,   \
+    .ProtectImageFromFv                     = FALSE    \
   },                                                  \
   { /* Execution Protection */                        \
     .EnabledForType = {                               \
-      [EfiReservedMemoryType]               = TRUE,   \
+      [EfiReservedMemoryType]               = FALSE,   \
       [EfiLoaderCode]                       = FALSE,  \
-      [EfiLoaderData]                       = TRUE,   \
+      [EfiLoaderData]                       = FALSE,   \
       [EfiBootServicesCode]                 = FALSE,  \
-      [EfiBootServicesData]                 = TRUE,   \
+      [EfiBootServicesData]                 = FALSE,   \
       [EfiRuntimeServicesCode]              = FALSE,  \
-      [EfiRuntimeServicesData]              = TRUE,   \
-      [EfiConventionalMemory]               = TRUE,   \
-      [EfiUnusableMemory]                   = TRUE,   \
-      [EfiACPIReclaimMemory]                = TRUE,   \
-      [EfiACPIMemoryNVS]                    = TRUE,   \
-      [EfiMemoryMappedIO]                   = TRUE,   \
-      [EfiMemoryMappedIOPortSpace]          = TRUE,   \
-      [EfiPalCode]                          = TRUE,   \
+      [EfiRuntimeServicesData]              = FALSE,   \
+      [EfiConventionalMemory]               = FALSE,   \
+      [EfiUnusableMemory]                   = FALSE,   \
+      [EfiACPIReclaimMemory]                = FALSE,   \
+      [EfiACPIMemoryNVS]                    = FALSE,   \
+      [EfiMemoryMappedIO]                   = FALSE,   \
+      [EfiMemoryMappedIOPortSpace]          = FALSE,   \
+      [EfiPalCode]                          = FALSE,   \
       [EfiPersistentMemory]                 = FALSE,  \
-      [EfiUnacceptedMemoryType]             = TRUE,   \
-      [OEM_RESERVED_MPS_MEMORY_TYPE]        = TRUE,   \
-      [OS_RESERVED_MPS_MEMORY_TYPE]         = TRUE    \
+      [EfiUnacceptedMemoryType]             = FALSE,   \
+      [OEM_RESERVED_MPS_MEMORY_TYPE]        = FALSE,   \
+      [OS_RESERVED_MPS_MEMORY_TYPE]         = FALSE    \
     }                                                 \
   },                                                  \
   { /* Heap Guard */                                  \
     .PageGuardEnabled                       = TRUE,   \
-    .PoolGuardEnabled                       = TRUE,   \
+    .PoolGuardEnabled                       = FALSE,   \
     .FreedMemoryGuardEnabled                = FALSE,  \
-    .NonstopModeEnabled                     = TRUE,   \
+    .NonstopModeEnabled                     = FALSE,   \
     .GuardAlignedToTail                     = FALSE   \
   },                                                  \
   { /* Pool Guard */                                  \
