@@ -174,8 +174,8 @@ extern GUID  gDxeMemoryProtectionSettingsGuid;
             TRUE, /* Stack Execution Protection */              \
             {     /* NULL Pointer Detection */                  \
               .Enabled                                = TRUE,   \
-              .DisableEndOfDxe                        = FALSE,  \
-              .NonstopModeEnabled                     = FALSE    \
+              .DisableEndOfDxe                        = TRUE,  \
+              .NonstopModeEnabled                     = TRUE    \
             },                                                  \
             { /* Image Protection */                            \
               .ProtectImageFromUnknown                = FALSE,   \
@@ -204,10 +204,10 @@ extern GUID  gDxeMemoryProtectionSettingsGuid;
               }                                                 \
             },                                                  \
             { /* Heap Guard */                                  \
-              .PageGuardEnabled                       = FALSE,   \
-              .PoolGuardEnabled                       = FALSE,  \
+              .PageGuardEnabled                       = TRUE,   \
+              .PoolGuardEnabled                       = TRUE,  \
               .FreedMemoryGuardEnabled                = FALSE,  \
-              .NonstopModeEnabled                     = FALSE,   \
+              .NonstopModeEnabled                     = TRUE,   \
               .GuardAlignedToTail                     = FALSE   \
             },                                                  \
             { /* Pool Guard */                                  \

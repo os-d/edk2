@@ -164,9 +164,8 @@ CoreAddRange (
   // used for other purposes.
   //
 
-  DEBUG ((DEBUG_ERROR, "OSDDEBUG 50 Enabled: %d\n", gDxeMps.NullPointerDetection.Enabled));
+  DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 50 Enabled: %d\n", gDxeMps.NullPointerDetection.Enabled));
   if ((EfiMemoryType == EfiConventionalMemory) && (Start == 0) && (End >= EFI_PAGE_SIZE - 1)) {
-    DEBUG ((DEBUG_ERROR, "OSDDEBUG 50 Enabled: %d\n", gDxeMps.NullPointerDetection.Enabled));
     // if (!gDxeMps.NullPointerDetection.Enabled) {
     //   DEBUG ((DEBUG_ERROR, "OSDDEBUG 51\n"));
     //   SetMem ((VOID *)(UINTN)Start, EFI_PAGE_SIZE, 0);
