@@ -176,6 +176,8 @@ FilterAndProcess (
   UINTN       NoHandles;
   UINTN       Idx;
 
+  DEBUG ((DEBUG_ERROR, "OSDDEBUG 480 %a\n", __func__));
+
   Status = gBS->LocateHandleBuffer (
                   ByProtocol,
                   ProtocolGuid,
@@ -183,6 +185,7 @@ FilterAndProcess (
                   &NoHandles,
                   &Handles
                   );
+  DEBUG ((DEBUG_ERROR, "OSDDEBUG 523 %a\n", __func__));
   if (EFI_ERROR (Status)) {
     //
     // This is not an error, just an informative condition.
@@ -205,6 +208,7 @@ FilterAndProcess (
     //
     // The ConvertDevicePathToText() function handles NULL input transparently.
     //
+    DEBUG ((DEBUG_ERROR, "OSDDEBUG 522 %a\n", __func__));
     DevicePathText = ConvertDevicePathToText (
                        DevicePathFromHandle (Handles[Idx]),
                        FALSE, // DisplayOnly
@@ -214,16 +218,22 @@ FilterAndProcess (
       DevicePathText = Fallback;
     }
 
+    DEBUG ((DEBUG_ERROR, "OSDDEBUG 521 %a\n", __func__));
     if ((Filter == NULL) || Filter (Handles[Idx], DevicePathText)) {
+      DEBUG ((DEBUG_ERROR, "OSDDEBUG 520 %a\n", __func__));
       Process (Handles[Idx], DevicePathText);
     }
 
     if (DevicePathText != Fallback) {
+      DEBUG ((DEBUG_ERROR, "OSDDEBUG 481 %a\n", __func__));
       FreePool (DevicePathText);
+      DEBUG ((DEBUG_ERROR, "OSDDEBUG 482 %a\n", __func__));
     }
   }
 
+  DEBUG ((DEBUG_ERROR, "OSDDEBUG 483 %a\n", __func__));
   gBS->FreePool (Handles);
+  DEBUG ((DEBUG_ERROR, "OSDDEBUG 484 %a\n", __func__));
 }
 
 /**
@@ -1003,8 +1013,9 @@ PlatformBootManagerBeforeConsole (
   // non-recursively. This will produce a number of child handles with PciIo on
   // them.
   //
+  DEBUG ((DEBUG_ERROR, "OSDDEBUG 490 %a\n", __func__));
   FilterAndProcess (&gEfiPciRootBridgeIoProtocolGuid, NULL, Connect);
-
+  DEBUG ((DEBUG_ERROR, "OSDDEBUG 491 %a\n", __func__));
   //
   // Signal the ACPI platform driver that it can download QEMU ACPI tables.
   //
@@ -1015,13 +1026,17 @@ PlatformBootManagerBeforeConsole (
   // step), and connect them non-recursively. This should produce a number of
   // child handles with GOPs on them.
   //
+  DEBUG ((DEBUG_ERROR, "OSDDEBUG 492 %a\n", __func__));
   FilterAndProcess (&gEfiPciIoProtocolGuid, IsPciDisplay, Connect);
+  DEBUG ((DEBUG_ERROR, "OSDDEBUG 493 %a\n", __func__));
 
   //
   // Now add the device path of all handles with GOP on them to ConOut and
   // ErrOut.
   //
+  DEBUG ((DEBUG_ERROR, "OSDDEBUG 494 %a\n", __func__));
   FilterAndProcess (&gEfiGraphicsOutputProtocolGuid, NULL, AddOutput);
+  DEBUG ((DEBUG_ERROR, "OSDDEBUG 495 %a\n", __func__));
 
   //
   // Add the hardcoded short-form USB keyboard device path to ConIn.
@@ -1091,19 +1106,25 @@ PlatformBootManagerBeforeConsole (
   // At this point, VIRTIO_DEVICE_PROTOCOL instances exist only for Virtio MMIO
   // transports. Install EFI_RNG_PROTOCOL instances on Virtio MMIO RNG devices.
   //
+  DEBUG ((DEBUG_ERROR, "OSDDEBUG 496 %a\n", __func__));
   FilterAndProcess (&gVirtioDeviceProtocolGuid, IsVirtioRng, Connect);
+  DEBUG ((DEBUG_ERROR, "OSDDEBUG 497 %a\n", __func__));
 
   //
   // Install both VIRTIO_DEVICE_PROTOCOL and (dependent) EFI_RNG_PROTOCOL
   // instances on Virtio PCI RNG devices.
   //
+  DEBUG ((DEBUG_ERROR, "OSDDEBUG 498 %a\n", __func__));
   FilterAndProcess (&gEfiPciIoProtocolGuid, IsVirtioPciRng, Connect);
+  DEBUG ((DEBUG_ERROR, "OSDDEBUG 499 %a\n", __func__));
 
   //
   // Register Virtio serial devices as console.
   //
   FilterAndProcess (&gVirtioDeviceProtocolGuid, IsVirtioSerial, SetupVirtioSerial);
+  DEBUG ((DEBUG_ERROR, "OSDDEBUG 500 %a\n", __func__));
   FilterAndProcess (&gEfiPciIoProtocolGuid, IsVirtioPciSerial, SetupVirtioSerial);
+  DEBUG ((DEBUG_ERROR, "OSDDEBUG 501 %a\n", __func__));
 }
 
 /**

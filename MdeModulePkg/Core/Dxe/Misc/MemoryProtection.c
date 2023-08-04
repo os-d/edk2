@@ -229,7 +229,12 @@ SetUefiImageMemoryAttributes (
   DEBUG ((DEBUG_INFO, "SetUefiImageMemoryAttributes - 0x%016lx - 0x%016lx (0x%016lx)\n", BaseAddress, Length, FinalAttributes));
 
   ASSERT (gCpu != NULL);
-  gCpu->SetMemoryAttributes (gCpu, BaseAddress, Length, FinalAttributes);
+
+  Status = CoreSetMemorySpaceCapabilities (BaseAddress, Length, Descriptor.Capabilities | FinalAttributes);
+  ASSERT_EFI_ERROR (Status);
+  // gCpu->SetMemoryAttributes (gCpu, BaseAddress, Length, FinalAttributes);
+  Status = CoreSetMemorySpaceAttributes (BaseAddress, Length, FinalAttributes);
+  ASSERT_EFI_ERROR (Status); // OSDDEBUG probably need to set capabilities first?
 }
 
 /**
@@ -270,6 +275,7 @@ SetUefiImageProtectionAttributes (
       //
       // DATA
       //
+      DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 403\n"));
       SetUefiImageMemoryAttributes (
         CurrentBase,
         ImageRecordCodeSection->CodeSegmentBase - CurrentBase,
@@ -280,6 +286,7 @@ SetUefiImageProtectionAttributes (
     //
     // CODE
     //
+    DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 404\n"));
     SetUefiImageMemoryAttributes (
       ImageRecordCodeSection->CodeSegmentBase,
       ImageRecordCodeSection->CodeSegmentSize,
@@ -296,6 +303,7 @@ SetUefiImageProtectionAttributes (
     //
     // DATA
     //
+    DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 405\n"));
     SetUefiImageMemoryAttributes (
       CurrentBase,
       ImageEnd - CurrentBase,
@@ -627,6 +635,7 @@ UnprotectUefiImage (
                     );
 
     if (ImageRecord->ImageBase == (EFI_PHYSICAL_ADDRESS)(UINTN)LoadedImage->ImageBase) {
+      DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 406\n"));
       SetUefiImageMemoryAttributes (
         ImageRecord->ImageBase,
         ImageRecord->ImageSize,
@@ -841,6 +850,7 @@ InitializeDxeNxMemoryProtectionPolicy (
   while ((UINTN)MemoryMapEntry < (UINTN)MemoryMapEnd) {
     Attributes = GetPermissionAttributeForMemoryType (MemoryMapEntry->Type);
     if (Attributes != 0) {
+      DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 407\n"));
       SetUefiImageMemoryAttributes (
         MemoryMapEntry->PhysicalStart,
         LShiftU64 (MemoryMapEntry->NumberOfPages, EFI_PAGE_SHIFT),
@@ -887,12 +897,16 @@ InitializeDxeNxMemoryProtectionPolicy (
           ));
 
         ASSERT (gCpu != NULL);
-        gCpu->SetMemoryAttributes (
-                gCpu,
-                Entry->BaseAddress,
-                Entry->EndAddress - Entry->BaseAddress + 1,
-                Attributes
-                );
+        Status = CoreSetMemorySpaceCapabilities (Entry->BaseAddress, Entry->EndAddress - Entry->BaseAddress + 1, Entry->Capabilities | Attributes);
+        // gCpu->SetMemoryAttributes (
+        //         gCpu,
+        //         Entry->BaseAddress,
+        //         Entry->EndAddress - Entry->BaseAddress + 1,
+        //         Attributes
+        //         );
+        Status = CoreSetMemorySpaceAttributes (Entry->BaseAddress, Entry->EndAddress - Entry->BaseAddress + 1, Attributes);
+        // OSDEBUG probably need to do capabilities before this
+        ASSERT_EFI_ERROR (Status);
       }
 
       Link = Link->ForwardLink;
@@ -1066,6 +1080,7 @@ MemoryProtectionCpuArchProtocolNotify (
 
   if (gMps.Dxe.NullPointerDetection.Enabled) {
     DEBUG ((DEBUG_INFO, "Applying NULL Detection\n"));
+    DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 409\n"));
     SetUefiImageMemoryAttributes (
       (UINTN)NULL,
       EFI_PAGE_SIZE,
@@ -1126,6 +1141,7 @@ MemoryProtectionExitBootServicesCallback (
   if (IS_DXE_IMAGE_PROTECTION_ACTIVE) {
     for (Link = gRuntime->ImageHead.ForwardLink; Link != &gRuntime->ImageHead; Link = Link->ForwardLink) {
       RuntimeImage = BASE_CR (Link, EFI_RUNTIME_IMAGE_ENTRY, Link);
+      DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 402\n"));
       SetUefiImageMemoryAttributes ((UINT64)(UINTN)RuntimeImage->ImageBase, ALIGN_VALUE (RuntimeImage->ImageSize, EFI_PAGE_SIZE), 0);
     }
   }
@@ -1299,6 +1315,8 @@ ApplyMemoryProtectionPolicy (
 {
   UINT64  OldAttributes;
   UINT64  NewAttributes;
+  EFI_GCD_MEMORY_SPACE_DESCRIPTOR GcdDescriptor;
+  EFI_STATUS Status;
 
   //
   // The policy configured in DXE Execution Protection Policy
@@ -1364,5 +1382,13 @@ ApplyMemoryProtectionPolicy (
     return EFI_SUCCESS;
   }
 
-  return gCpu->SetMemoryAttributes (gCpu, Memory, Length, NewAttributes);
+  Status = CoreGetMemorySpaceDescriptor (Memory, &GcdDescriptor);
+  ASSERT_EFI_ERROR (Status);
+
+  Status = CoreSetMemorySpaceCapabilities (Memory, Length, GcdDescriptor.Capabilities | NewAttributes);
+  ASSERT_EFI_ERROR (Status);
+
+  // return gCpu->SetMemoryAttributes (gCpu, Memory, Length, NewAttributes);
+  // OSDDEBUG need to do capabilities first?
+  return CoreSetMemorySpaceAttributes (Memory, Length, NewAttributes);
 }

@@ -1145,10 +1145,13 @@ CoreOpenProtocol (
   //
   // Create new entry
   //
+  DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 510 %a\n", __func__));
   OpenData = AllocatePool (sizeof (OPEN_PROTOCOL_DATA));
   if (OpenData == NULL) {
     Status = EFI_OUT_OF_RESOURCES;
+    DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 511 %a\n", __func__));
   } else {
+    DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 512 %a OpenData 0x%llx\n", __func__, OpenData));
     OpenData->Signature        = OPEN_PROTOCOL_DATA_SIGNATURE;
     OpenData->AgentHandle      = ImageHandle;
     OpenData->ControllerHandle = ControllerHandle;
