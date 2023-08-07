@@ -911,7 +911,9 @@ CoreConvertPagesEx (
           DEBUG_CLEAR_MEMORY ((VOID *)(UINTN)EFI_PAGE_SIZE, (UINTN)(RangeEnd - EFI_PAGE_SIZE + 1));
         }
       } else {
+        DEBUG ((DEBUG_ERROR, "OSDDEBUG 700 Start: 0x%llx RangeEnd - Start + 1 0x%llx RangeEnd 0x%llx Start 0x%llx\n", Start, (RangeEnd - Start + 1), RangeEnd, Start));
         DEBUG_CLEAR_MEMORY ((VOID *)(UINTN)Start, (UINTN)(RangeEnd - Start + 1));
+        DEBUG ((DEBUG_ERROR, "OSDDEBUG 710 Start: 0x%llx RangeEnd - Start + 1 0x%llx RangeEnd 0x%llx Start 0x%llx\n", Start, (RangeEnd - Start + 1), RangeEnd, Start));
       }
     }
 
@@ -924,11 +926,6 @@ CoreConvertPagesEx (
     // Bump the starting address, and convert the next range
     //
     Start = RangeEnd + 1;
-  }
-
-  if ((UINTN)Start == 0x7D544000 || (UINTN)Start == 0x7D4F8000) {
-   DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 616 %a\n", __func__)); // OSDDEBUG messed up here, entries covering same range, but ok here on previous iteration
-   CoreDumpGcdMemorySpaceMap (FALSE);
   }
 
   //

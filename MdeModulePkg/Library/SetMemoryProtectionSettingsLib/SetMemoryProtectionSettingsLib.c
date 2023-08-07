@@ -73,7 +73,7 @@ STATIC MEMORY_PROTECTION_SETTINGS_PRIVATE  *mMpsp = NULL;
     .PoolGuardEnabled                       = TRUE,   \
     .FreedMemoryGuardEnabled                = FALSE,  \
     .NonstopModeEnabled                     = TRUE,   \
-    .GuardAlignedToTail                     = FALSE   \
+    .GuardAlignedToTail                     = TRUE   \
   },                                                  \
   { /* Pool Guard */                                  \
     .EnabledForType = {                               \

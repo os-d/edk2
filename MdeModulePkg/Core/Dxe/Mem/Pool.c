@@ -674,7 +674,9 @@ CoreFreePoolPagesWithGuard (
   MemoryGuarded  = Memory;
   NoPagesGuarded = NoPages;
 
+  DEBUG ((DEBUG_ERROR, "OSDDEBUG 701 freeing 0x%llx NoPages 0x%llx\n", Memory, NoPages));
   AdjustMemoryF (&Memory, &NoPages);
+  DEBUG ((DEBUG_ERROR, "OSDDEBUG 702 freeing 0x%llx NoPages 0x%llx\n", Memory, NoPages));
   //
   // It's safe to unset Guard page inside memory lock because there should
   // be no memory allocation occurred in updating memory page attribute at
