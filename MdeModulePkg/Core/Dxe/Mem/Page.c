@@ -912,6 +912,9 @@ CoreConvertPagesEx (
         }
       } else {
         DEBUG ((DEBUG_ERROR, "OSDDEBUG 700 Start: 0x%llx RangeEnd - Start + 1 0x%llx RangeEnd 0x%llx Start 0x%llx\n", Start, (RangeEnd - Start + 1), RangeEnd, Start));
+        if (Start == 0x7BF2F000) {
+          DumpGuardedMemoryBitmap ();
+        }
         DEBUG_CLEAR_MEMORY ((VOID *)(UINTN)Start, (UINTN)(RangeEnd - Start + 1));
         DEBUG ((DEBUG_ERROR, "OSDDEBUG 710 Start: 0x%llx RangeEnd - Start + 1 0x%llx RangeEnd 0x%llx Start 0x%llx\n", Start, (RangeEnd - Start + 1), RangeEnd, Start));
       }

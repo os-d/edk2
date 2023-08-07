@@ -729,19 +729,9 @@ CoreFreePoolI (
   Head = BASE_CR (Buffer, POOL_HEAD, Data);
   ASSERT (Head != NULL);
 
-  if ((UINTN)Head == (UINTN)0x7DED0000) {
-    DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 530 %a Head 0x%llx Head->Signature: 0x%llx\n", __func__, Head, Head->Signature));
-  }
-
   if ((Head->Signature != POOL_HEAD_SIGNATURE) &&
       (Head->Signature != POOLPAGE_HEAD_SIGNATURE))
   {
-    DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 450 %a Head 0x%llx Head->Signature: 0x%llx\n", __func__, Head, Head->Signature));
-
-    DumpGuardedMemoryBitmap ();
-
-    Free = 0;
-    Free->Signature = 0x9;
     ASSERT (
       Head->Signature == POOL_HEAD_SIGNATURE ||
       Head->Signature == POOLPAGE_HEAD_SIGNATURE
