@@ -427,12 +427,14 @@ CoreAllocatePoolI (
     }
 
     NoPages  = EFI_SIZE_TO_PAGES (Size) + EFI_SIZE_TO_PAGES (Granularity) - 1;
+    DEBUG ((DEBUG_ERROR, "OSDDEBUG 743 Head: 0x%llx NoPages: 0x%llx Size: 0x%llx SIZE_TO_PAGES: 0x%llx Gran: 0x%llx SIZE_TO_PAGES (Gran): 0x%llx\n", Head, NoPages, Size, EFI_SIZE_TO_PAGES (Size), Granularity, EFI_SIZE_TO_PAGES (Granularity)));
     NoPages &= ~(UINTN)(EFI_SIZE_TO_PAGES (Granularity) - 1);
     Head     = CoreAllocatePoolPagesI (PoolType, NoPages, Granularity, NeedGuard);
     if (Head == NULL) {
       DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 207\n"));
     }
     if (NeedGuard) {
+      DEBUG ((DEBUG_ERROR, "OSDDEBUG 725 Head: 0x%llx NoPages: 0x%llx Size: 0x%llx\n", Head, NoPages, Size));
       Head = AdjustPoolHeadA ((EFI_PHYSICAL_ADDRESS)(UINTN)Head, NoPages, Size);
     }
 
@@ -807,7 +809,7 @@ CoreFreePoolI (
     NoPages  = EFI_SIZE_TO_PAGES (Size) + EFI_SIZE_TO_PAGES (Granularity) - 1;
     NoPages &= ~(UINTN)(EFI_SIZE_TO_PAGES (Granularity) - 1);
     if (IsGuarded) {
-      Head = AdjustPoolHeadF ((EFI_PHYSICAL_ADDRESS)(UINTN)Head);
+      Head = AdjustPoolHeadF ((EFI_PHYSICAL_ADDRESS)(UINTN)Head, NoPages, Size);
       CoreFreePoolPagesWithGuard (
         Pool->MemoryType,
         (EFI_PHYSICAL_ADDRESS)(UINTN)Head,

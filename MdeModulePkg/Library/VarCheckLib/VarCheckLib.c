@@ -217,11 +217,14 @@ VarCheckAddTableEntry (
     //
     // Reallocate memory for the table.
     //
+    DEBUG ((DEBUG_ERROR, "OSDDEBUG 720 *Table: 0x%llx Size: 0x%llx\n", *Table, *MaxNumber * sizeof (UINTN)));
     TempTable = ReallocateRuntimePool (
                   *MaxNumber * sizeof (UINTN),
                   (*MaxNumber + VAR_CHECK_TABLE_SIZE) * sizeof (UINTN),
                   *Table
                   );
+
+    DEBUG ((DEBUG_ERROR, "OSDDEBUG 721 TempTable: 0x%llx Size: 0x%llx\n", TempTable, (*MaxNumber + VAR_CHECK_TABLE_SIZE) * sizeof (UINTN)));
 
     //
     // No enough resource to allocate.
@@ -274,6 +277,8 @@ VarCheckLibRegisterEndOfDxeCallback (
   if (mVarCheckLibEndOfDxe) {
     return EFI_ACCESS_DENIED;
   }
+
+  DEBUG ((DEBUG_ERROR, "OSDDEBUG 730\n"));
 
   Status = VarCheckAddTableEntry (
              (UINTN **)&mVarCheckLibEndOfDxeCallback,
@@ -409,6 +414,8 @@ VarCheckLibRegisterAddressPointer (
     return EFI_ACCESS_DENIED;
   }
 
+  DEBUG ((DEBUG_ERROR, "OSDDEBUG 731\n"));
+
   Status = VarCheckAddTableEntry (
              (UINTN **)&mVarCheckLibAddressPointer,
              &mVarCheckLibAddressPointerMaxCount,
@@ -450,6 +457,8 @@ VarCheckLibRegisterSetVariableCheckHandler (
   if (mVarCheckLibEndOfDxe) {
     return EFI_ACCESS_DENIED;
   }
+
+  DEBUG ((DEBUG_ERROR, "OSDDEBUG 733\n"));
 
   Status =  VarCheckAddTableEntry (
               (UINTN **)&mVarCheckHandlerTable,
@@ -525,6 +534,8 @@ VarCheckLibVariablePropertySet (
     StrCpyS (VariableName, StrSize (Name)/sizeof (CHAR16), Name);
     CopyGuid (&Entry->Guid, Guid);
     CopyMem (&Entry->VariableProperty, VariableProperty, sizeof (*VariableProperty));
+
+    DEBUG ((DEBUG_ERROR, "OSDDEBUG 734 mVarcheckVariableTable: 0x%llx\n", mVarCheckVariableTable));
 
     Status = VarCheckAddTableEntry (
                (UINTN **)&mVarCheckVariableTable,

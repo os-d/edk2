@@ -169,20 +169,20 @@ CoreDumpGcdMemorySpaceMap (
   LIST_ENTRY                       *Link;
   EFI_GCD_MAP_ENTRY                *Entry;
 
-  if ((PcdGet32 (PcdDebugPrintErrorLevel) & DEBUG_GCD) == 0) {
-    return;
-  }
+  // if ((PcdGet32 (PcdDebugPrintErrorLevel) & DEBUG_GCD) == 0) {
+  //   return;
+  // }
 
   if (InitialMap) {
     DEBUG ((DEBUG_GCD, "GCD:Initial GCD Memory Space Map\n"));
-  }
+  // }
 
-  DEBUG ((DEBUG_GCD, "GCDMemType EFIMemType Range                             Capabilities     Attributes       FromPages\n"));
-  DEBUG ((DEBUG_GCD, "========== ========== ================================= ================ ================ =========\n"));
+  DEBUG ((DEBUG_ERROR, "GCDMemType EFIMemType Range                             Capabilities     Attributes       FromPages\n"));
+  DEBUG ((DEBUG_ERROR, "========== ========== ================================= ================ ================ =========\n"));
   for (Link = mGcdMemorySpaceMap.ForwardLink; Link != &mGcdMemorySpaceMap; Link = Link->ForwardLink) {
     Entry = CR (Link, EFI_GCD_MAP_ENTRY, Link, EFI_GCD_MAP_SIGNATURE);
     DEBUG ((
-      DEBUG_GCD,
+      DEBUG_ERROR,
       "%a  %a  %016lx-%016lx %016lx %016lx%c %d\n",
       mGcdMemoryTypeNames[MIN (Entry->GcdMemoryType, EfiGcdMemoryTypeMaximum)],
       mEfiMemoryTypeNames[MIN (Entry->EfiMemoryType, EfiMaxMemoryType)],
@@ -193,6 +193,7 @@ CoreDumpGcdMemorySpaceMap (
       Entry->ImageHandle == NULL ? ' ' : '*',
       Entry->FromPages
       ));
+  }
   }
 
   DEBUG ((DEBUG_GCD, "\n"));

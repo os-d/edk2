@@ -383,7 +383,9 @@ AdjustPoolHeadA (
 **/
 VOID *
 AdjustPoolHeadF (
-  IN EFI_PHYSICAL_ADDRESS  Memory
+  IN EFI_PHYSICAL_ADDRESS  Memory,
+  IN UINTN                 NoPages,
+  IN UINTN                 Size
   );
 
 /**
