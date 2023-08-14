@@ -893,11 +893,6 @@ CoreConvertPagesEx (
         (EfiMemoryType != EfiConventionalMemory))
     {
       CoreAddRange (EfiMemoryType, EfiGcdMemoryType, Start, RangeEnd, Attribute, Capabilities, ImageHandle);
-      
-      if ((UINTN)Start == 0x7D544000 || (UINTN)Start == 0x7D4F8000) {
-        DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 610 %a\n", __func__));
-        CoreDumpGcdMemorySpaceMap (FALSE);
-      }
     }
 
     if (ChangingType && (EfiMemoryType == EfiConventionalMemory)) {
@@ -911,12 +906,12 @@ CoreConvertPagesEx (
           DEBUG_CLEAR_MEMORY ((VOID *)(UINTN)EFI_PAGE_SIZE, (UINTN)(RangeEnd - EFI_PAGE_SIZE + 1));
         }
       } else {
-        DEBUG ((DEBUG_ERROR, "OSDDEBUG 700 Start: 0x%llx RangeEnd - Start + 1 0x%llx RangeEnd 0x%llx Start 0x%llx\n", Start, (RangeEnd - Start + 1), RangeEnd, Start));
+        DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 700 Start: 0x%llx RangeEnd - Start + 1 0x%llx RangeEnd 0x%llx Start 0x%llx\n", Start, (RangeEnd - Start + 1), RangeEnd, Start));
         if (Start == 0x7BF2F000) {
           DumpGuardedMemoryBitmap ();
         }
         DEBUG_CLEAR_MEMORY ((VOID *)(UINTN)Start, (UINTN)(RangeEnd - Start + 1));
-        DEBUG ((DEBUG_ERROR, "OSDDEBUG 710 Start: 0x%llx RangeEnd - Start + 1 0x%llx RangeEnd 0x%llx Start 0x%llx\n", Start, (RangeEnd - Start + 1), RangeEnd, Start));
+        DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 710 Start: 0x%llx RangeEnd - Start + 1 0x%llx RangeEnd 0x%llx Start 0x%llx\n", Start, (RangeEnd - Start + 1), RangeEnd, Start));
       }
     }
 
@@ -1221,9 +1216,11 @@ FindFreePages (
   //
   // If allocations from the preferred bins fail, then attempt to promote memory resources.
   //
+  DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 750\n"));
   if (!PromoteGuardedFreePages (&StartAddress, &EndAddress)) {
     return 0;
   }
+  DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 751\n"));
 
   //
   // If any memory resources were promoted, then re-attempt the allocation
@@ -1412,11 +1409,16 @@ CoreInternalAllocatePages (
     // If requested memory region is unavailable it may be untested memory
     // Attempt to promote memory resources, then re-attempt the allocation
     //
+    DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 752\n"));
     if (PromoteGuardedFreePages (&StartAddress, &EndAddress)) {
       if (NeedGuard) {
+        DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 753\n"));
         Status = CoreConvertPagesWithGuard (Start, NumberOfPages, MemoryType);
+        DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 754\n"));
       } else {
+        DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 755\n"));
         Status = CoreConvertPages (Start, NumberOfPages, MemoryType);
+        DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 756\n"));
       }
     }
   }

@@ -217,14 +217,14 @@ VarCheckAddTableEntry (
     //
     // Reallocate memory for the table.
     //
-    DEBUG ((DEBUG_ERROR, "OSDDEBUG 720 *Table: 0x%llx Size: 0x%llx\n", *Table, *MaxNumber * sizeof (UINTN)));
+    DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 720 *Table: 0x%llx Size: 0x%llx\n", *Table, *MaxNumber * sizeof (UINTN)));
     TempTable = ReallocateRuntimePool (
                   *MaxNumber * sizeof (UINTN),
                   (*MaxNumber + VAR_CHECK_TABLE_SIZE) * sizeof (UINTN),
                   *Table
                   );
 
-    DEBUG ((DEBUG_ERROR, "OSDDEBUG 721 TempTable: 0x%llx Size: 0x%llx\n", TempTable, (*MaxNumber + VAR_CHECK_TABLE_SIZE) * sizeof (UINTN)));
+    DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 721 TempTable: 0x%llx Size: 0x%llx\n", TempTable, (*MaxNumber + VAR_CHECK_TABLE_SIZE) * sizeof (UINTN)));
 
     //
     // No enough resource to allocate.
@@ -278,7 +278,7 @@ VarCheckLibRegisterEndOfDxeCallback (
     return EFI_ACCESS_DENIED;
   }
 
-  DEBUG ((DEBUG_ERROR, "OSDDEBUG 730\n"));
+  DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 730\n"));
 
   Status = VarCheckAddTableEntry (
              (UINTN **)&mVarCheckLibEndOfDxeCallback,
@@ -414,7 +414,7 @@ VarCheckLibRegisterAddressPointer (
     return EFI_ACCESS_DENIED;
   }
 
-  DEBUG ((DEBUG_ERROR, "OSDDEBUG 731\n"));
+  DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 731\n"));
 
   Status = VarCheckAddTableEntry (
              (UINTN **)&mVarCheckLibAddressPointer,
@@ -458,7 +458,7 @@ VarCheckLibRegisterSetVariableCheckHandler (
     return EFI_ACCESS_DENIED;
   }
 
-  DEBUG ((DEBUG_ERROR, "OSDDEBUG 733\n"));
+  DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 733\n"));
 
   Status =  VarCheckAddTableEntry (
               (UINTN **)&mVarCheckHandlerTable,
@@ -535,7 +535,7 @@ VarCheckLibVariablePropertySet (
     CopyGuid (&Entry->Guid, Guid);
     CopyMem (&Entry->VariableProperty, VariableProperty, sizeof (*VariableProperty));
 
-    DEBUG ((DEBUG_ERROR, "OSDDEBUG 734 mVarcheckVariableTable: 0x%llx\n", mVarCheckVariableTable));
+    DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 734 mVarcheckVariableTable: 0x%llx\n", mVarCheckVariableTable));
 
     Status = VarCheckAddTableEntry (
                (UINTN **)&mVarCheckVariableTable,

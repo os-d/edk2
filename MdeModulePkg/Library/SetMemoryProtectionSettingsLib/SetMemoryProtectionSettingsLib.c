@@ -69,9 +69,9 @@ STATIC MEMORY_PROTECTION_SETTINGS_PRIVATE  *mMpsp = NULL;
     }                                                 \
   },                                                  \
   { /* Heap Guard */                                  \
-    .PageGuardEnabled                       = TRUE,   \
-    .PoolGuardEnabled                       = TRUE,   \
-    .FreedMemoryGuardEnabled                = FALSE,  \
+    .PageGuardEnabled                       = FALSE,   \
+    .PoolGuardEnabled                       = FALSE,   \
+    .FreedMemoryGuardEnabled                = TRUE,  \
     .NonstopModeEnabled                     = TRUE,   \
     .GuardAlignedToTail                     = TRUE   \
   },                                                  \
