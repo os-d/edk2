@@ -50,6 +50,12 @@ EFI_PEI_PPI_DESCRIPTOR  mPpiBootMode[] = {
   }
 };
 
+#define DXE_MEMORY_PROTECTION_PROFILE_FWCFG_FILE \
+  "opt/org.tianocore/DxeMemoryProtectionProfile"
+
+#define MM_MEMORY_PROTECTION_PROFILE_FWCFG_FILE \
+  "opt/org.tianocore/MmMemoryProtectionProfile"
+
 VOID
 MemMapInitialization (
   IN OUT EFI_HOB_PLATFORM_INFO  *PlatformInfoHob
@@ -72,21 +78,6 @@ MemMapInitialization (
   ASSERT_RETURN_ERROR (PcdStatus);
   PcdStatus = PcdSet64S (PcdPciIoSize, PlatformInfoHob->PcdPciIoSize);
   ASSERT_RETURN_ERROR (PcdStatus);
-}
-
-STATIC
-VOID
-NoexecDxeInitialization (
-  IN OUT EFI_HOB_PLATFORM_INFO  *PlatformInfoHob
-  )
-{
-  RETURN_STATUS  Status;
-
-  Status = PlatformNoexecDxeInitialization (PlatformInfoHob);
-  if (!RETURN_ERROR (Status)) {
-    Status = PcdSetBoolS (PcdSetNxForStack, PlatformInfoHob->PcdSetNxForStack);
-    ASSERT_RETURN_ERROR (Status);
-  }
 }
 
 static const UINT8  EmptyFdt[] = {
@@ -309,6 +300,8 @@ InitializePlatform (
   EFI_STATUS                      Status;
   DXE_MEMORY_PROTECTION_SETTINGS  DxeSettings;
   MM_MEMORY_PROTECTION_SETTINGS   MmSettings;
+  CHAR8                           String[100];
+  UINTN                           StringSize;
 
   DEBUG ((DEBUG_INFO, "Platform PEIM Loaded\n"));
   PlatformInfoHob = BuildPlatformInfoHob ();
@@ -345,13 +338,47 @@ InitializePlatform (
 
   PublishPeiMemory (PlatformInfoHob);
 
-  DxeSettings                                 = DxeMemoryProtectionProfiles[DxeMemoryProtectionSettingsPcd].Settings;
-  MmSettings                                  = MmMemoryProtectionProfiles[MmMemoryProtectionSettingsPcd].Settings;
-  DxeSettings.StackExecutionProtectionEnabled = PcdGetBool (PcdSetNxForStack);
-  QemuFwCfgParseBool ("opt/ovmf/PcdSetNxForStack", &DxeSettings.StackExecutionProtectionEnabled);
+  StringSize = sizeof (String);
 
-  SetDxeMemoryProtectionSettings (&DxeSettings, DxeMemoryProtectionSettingsPcd);
-  SetMmMemoryProtectionSettings (&MmSettings, MmMemoryProtectionSettingsPcd);
+  Status = QemuFwCfgParseString (DXE_MEMORY_PROTECTION_PROFILE_FWCFG_FILE, &StringSize, String);
+  if (!EFI_ERROR (Status)) {
+    DEBUG ((DEBUG_INFO, "Setting DXE Memory Protection Profile: %a\n", String));
+    if (AsciiStriCmp (String, "debug") == 0) {
+      DxeSettings = DxeMemoryProtectionProfiles[DxeMemoryProtectionSettingsDebug].Settings;
+    } else if (AsciiStriCmp (String, "release") == 0) {
+      DxeSettings = DxeMemoryProtectionProfiles[DxeMemoryProtectionSettingsRelease].Settings;
+    } else if (AsciiStriCmp (String, "off") == 0) {
+      DxeSettings = DxeMemoryProtectionProfiles[DxeMemoryProtectionSettingsOff].Settings;
+    } else {
+      DEBUG ((DEBUG_ERROR, "Invalid DXE memory protection profile: %a\n", String));
+      ASSERT (FALSE);
+    }
+  } else {
+    DxeSettings = DxeMemoryProtectionProfiles[DxeMemoryProtectionSettingsDebug].Settings;
+  }
+
+  Status = QemuFwCfgParseString (MM_MEMORY_PROTECTION_PROFILE_FWCFG_FILE, &StringSize, String);
+  if (!EFI_ERROR (Status)) {
+    DEBUG ((DEBUG_INFO, "Setting MM Memory Protection Profile: %a\n", String));
+    if (AsciiStriCmp (String, "debug") == 0) {
+      MmSettings = MmMemoryProtectionProfiles[MmMemoryProtectionSettingsDebug].Settings;
+    } else if (AsciiStriCmp (String, "release") == 0) {
+      MmSettings = MmMemoryProtectionProfiles[MmMemoryProtectionSettingsRelease].Settings;
+    } else if (AsciiStriCmp (String, "off") == 0) {
+      MmSettings = MmMemoryProtectionProfiles[MmMemoryProtectionSettingsOff].Settings;
+    } else {
+      DEBUG ((DEBUG_ERROR, "Invalid MM memory protection profile: %a\n", String));
+      ASSERT (FALSE);
+    }
+  } else {
+    MmSettings = MmMemoryProtectionProfiles[MmMemoryProtectionSettingsOff].Settings;
+  }
+
+  // Always disable NullPointerDetection in EndOfDxe phase for shim compatability
+  DxeSettings.NullPointerDetection.DisableEndOfDxe = TRUE;
+
+  SetDxeMemoryProtectionSettings (&DxeSettings, DxeMemoryProtectionSettingsDebug);
+  SetMmMemoryProtectionSettings (&MmSettings, MmMemoryProtectionSettingsOff);
 
   PlatformQemuUc32BaseInitialization (PlatformInfoHob);
 
@@ -365,7 +392,6 @@ InitializePlatform (
     PeiFvInitialization (PlatformInfoHob);
     MemTypeInfoInitialization (PlatformInfoHob);
     MemMapInitialization (PlatformInfoHob);
-    NoexecDxeInitialization (PlatformInfoHob);
   }
 
   InstallClearCacheCallback ();

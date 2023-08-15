@@ -170,6 +170,8 @@ class PlatformBuilder( UefiBuilder, BuildSettingsManager):
         self.env.SetValue("PRODUCT_NAME", "OVMF", "Platform Hardcoded")
         self.env.SetValue("MAKE_STARTUP_NSH", "FALSE", "Default to false")
         self.env.SetValue("QEMU_HEADLESS", "FALSE", "Default to false")
+        self.env.SetValue("QEMU_CPUHP_QUIRK", "FALSE", "Default to false")
+        self.env.SetValue("MEMORY_PROTECTION_PROFILE", "DEBUG", "Default to Debug")
         return 0
 
     def PlatformPreBuild(self):
@@ -182,6 +184,8 @@ class PlatformBuilder( UefiBuilder, BuildSettingsManager):
         VirtualDrive = os.path.join(self.env.GetValue("BUILD_OUTPUT_BASE"), "VirtualDrive")
         os.makedirs(VirtualDrive, exist_ok=True)
         OutputPath_FV = os.path.join(self.env.GetValue("BUILD_OUTPUT_BASE"), "FV")
+        DxeMemoryProtection = self.env.GetValue("DXE_MEMORY_PROTECTION_PROFILE", "NONE")
+        MmMemoryProtection = self.env.GetValue("MM_MEMORY_PROTECTION_PROFILE", "NONE")
 
         if (self.env.GetValue("QEMU_SKIP") and
             self.env.GetValue("QEMU_SKIP").upper() == "TRUE"):
@@ -195,15 +199,27 @@ class PlatformBuilder( UefiBuilder, BuildSettingsManager):
         args  = "-debugcon stdio"                                           # write messages to stdio
         args += " -global isa-debugcon.iobase=0x402"                        # debug messages out thru virtual io port
         args += " -net none"                                                # turn off network
-        args += " -smp 4"
         args += f" -drive file=fat:rw:{VirtualDrive},format=raw,media=disk" # Mount disk with startup.nsh
+
+        if (DxeMemoryProtection.upper() == "OFF"):
+            args += " -fw_cfg name=opt/org.tianocore/DxeMemoryProtectionProfile,string=off"
+        elif (DxeMemoryProtection.upper() == "RELEASE"):
+            args += " -fw_cfg name=opt/org.tianocore/DxeMemoryProtectionProfile,string=release"
+        elif (DxeMemoryProtection.upper() == "DEBUG"):
+            args += " -fw_cfg name=opt/org.tianocore/DxeMemoryProtectionProfile,string=debug"
+
+        if (MmMemoryProtection.upper() == "OFF"):
+            args += " -fw_cfg name=opt/org.tianocore/MmMemoryProtectionProfile,string=off"
+        elif (MmMemoryProtection.upper() == "RELEASE"):
+            args += " -fw_cfg name=opt/org.tianocore/MmMemoryProtectionProfile,string=release"
+        elif (MmMemoryProtection.upper() == "DEBUG"):
+            args += " -fw_cfg name=opt/org.tianocore/MmMemoryProtectionProfile,string=debug"
 
         if (self.env.GetValue("QEMU_HEADLESS").upper() == "TRUE"):
             args += " -display none"  # no graphics
 
         if (self.env.GetBuildValue("SMM_REQUIRE") == "1"):
             args += " -machine q35,smm=on" #,accel=(tcg|kvm)"
-            args += " --accel tcg,thread=single"
             #args += " -m ..."
             args += " -global driver=cfi.pflash01,property=secure,value=on"
             args += " -drive if=pflash,format=raw,unit=0,file=" + os.path.join(OutputPath_FV, "OVMF_CODE.fd") + ",readonly=on"
@@ -211,6 +227,17 @@ class PlatformBuilder( UefiBuilder, BuildSettingsManager):
         else:
             args += " -pflash " + os.path.join(OutputPath_FV, "OVMF.fd")    # path to firmware
 
+
+        ###
+        ### NOTE This is a temporary workaround to allow platform CI to cope with
+        ###      a QEMU bug in the CPU hotplug code. Once the CI environment has
+        ###      been updated to carry a fixed version of QEMU, this can be
+        ###      removed again
+        ###
+        ### Bugzilla: https://bugzilla.tianocore.org/show_bug.cgi?id=4250
+        ###
+        if (self.env.GetValue("QEMU_CPUHP_QUIRK").upper() == "TRUE"):
+            args += "  -fw_cfg name=opt/org.tianocore/X-Cpuhp-Bugcheck-Override,string=yes"
 
         if (self.env.GetValue("MAKE_STARTUP_NSH").upper() == "TRUE"):
             f = open(os.path.join(VirtualDrive, "startup.nsh"), "w")
