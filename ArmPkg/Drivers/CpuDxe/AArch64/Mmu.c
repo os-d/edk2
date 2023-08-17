@@ -181,6 +181,8 @@ GetNextEntryAttribute (
   UINTN                            NumberOfDescriptors;
   EFI_GCD_MEMORY_SPACE_DESCRIPTOR  *MemorySpaceMap;
 
+  DEBUG ((DEBUG_ERROR, "OSDDEBUG 60\n"));
+
   // Get the memory space map from GCD
   MemorySpaceMap = NULL;
   Status         = gDS->GetMemorySpaceMap (&NumberOfDescriptors, &MemorySpaceMap);
@@ -236,13 +238,13 @@ GetNextEntryAttribute (
     } else {
       if (*PrevEntryAttribute != INVALID_ENTRY) {
         // Update GCD with the last region
-        SetGcdMemorySpaceAttributes (
-          MemorySpaceMap,
-          NumberOfDescriptors,
-          *StartGcdRegion,
-          (BaseAddress + (Index * TT_ADDRESS_AT_LEVEL (TableLevel))) - *StartGcdRegion,
-          PageAttributeToGcdAttribute (*PrevEntryAttribute)
-          );
+        // SetGcdMemorySpaceAttributes (
+        //   MemorySpaceMap,
+        //   NumberOfDescriptors,
+        //   *StartGcdRegion,
+        //   (BaseAddress + (Index * TT_ADDRESS_AT_LEVEL (TableLevel))) - *StartGcdRegion,
+        //   PageAttributeToGcdAttribute (*PrevEntryAttribute)
+        //   );
 
         // Start of the new region
         *StartGcdRegion     = BaseAddress + (Index * TT_ADDRESS_AT_LEVEL (TableLevel));

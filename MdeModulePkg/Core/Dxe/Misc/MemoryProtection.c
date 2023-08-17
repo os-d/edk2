@@ -819,6 +819,7 @@ InitializeDxeNxMemoryProtectionPolicy (
                   &DescriptorSize,
                   &DescriptorVersion
                   );
+  
   ASSERT (Status == EFI_BUFFER_TOO_SMALL);
   do {
     MemoryMap = (EFI_MEMORY_DESCRIPTOR *)AllocatePool (MemoryMapSize);
@@ -830,10 +831,16 @@ InitializeDxeNxMemoryProtectionPolicy (
                     &DescriptorSize,
                     &DescriptorVersion
                     );
+    // Status = EFI_SUCCESS;
     if (EFI_ERROR (Status)) {
       FreePool (MemoryMap);
     }
   } while (Status == EFI_BUFFER_TOO_SMALL);
+
+  DEBUG ((DEBUG_ERROR, "OSDDEBUG 100 DescriptorSize: 0x%llx MemoryMapSize: 0x%llx\n", DescriptorSize, MemoryMapSize));
+
+  // FreePool (MemoryMap);
+  // return;
 
   ASSERT_EFI_ERROR (Status);
 
@@ -862,6 +869,7 @@ InitializeDxeNxMemoryProtectionPolicy (
   }
 
   FreePool (MemoryMap);
+  return;
 
   //
   // Apply the policy for RAM regions that we know are present and

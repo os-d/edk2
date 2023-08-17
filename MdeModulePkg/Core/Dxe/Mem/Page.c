@@ -1809,6 +1809,7 @@ CoreGetMemoryMap (
   // Compute the buffer size needed to fit the entire map
   //
   BufferSize = Size * NumberOfEntries;
+  DEBUG ((DEBUG_ERROR, "OSDDEBUG 103 BufferSize: 0x%llx\n", BufferSize));
 
   if (*MemoryMapSize < BufferSize) {
     Status = EFI_BUFFER_TOO_SMALL;
@@ -1828,6 +1829,10 @@ CoreGetMemoryMap (
   for (Link = mGcdMemorySpaceMap.ForwardLink; Link != &mGcdMemorySpaceMap; Link = Link->ForwardLink) {
     Entry = CR (Link, EFI_GCD_MAP_ENTRY, Link, EFI_GCD_MAP_SIGNATURE);
     // OSDDEBUG still unclear value of VirtualStart? ASSERT (Entry->VirtualStart == 0);
+
+    if (Entry->GcdMemoryType == EfiGcdMemoryTypeNonExistent) {
+      continue;
+    }
 
     //
     // Convert internal map into an EFI_MEMORY_DESCRIPTOR
@@ -1935,7 +1940,7 @@ CoreGetMemoryMap (
       ASSERT (((MergeGcdMapEntry.EndAddress - MergeGcdMapEntry.BaseAddress + 1) & EFI_PAGE_MASK) == 0);
 
       //
-      // Create EFI_MEMORY_DESCRIPTOR for every Persistent GCD entries
+      // Create EFI_MEMORY_DESCRIPTOR for every Persistent GCD entry
       //
       MemoryMap->PhysicalStart = MergeGcdMapEntry.BaseAddress;
       MemoryMap->VirtualStart  = 0;
@@ -1996,6 +2001,8 @@ CoreGetMemoryMap (
   // Compute the size of the buffer actually used after all memory map descriptor merge operations
   //
   BufferSize = ((UINT8 *)MemoryMap - (UINT8 *)MemoryMapStart);
+
+  DEBUG ((DEBUG_ERROR, "OSDDEBUG 101 BufferSize: 0x%llx\n", BufferSize));
 
   //
   // Note: Some OSs will treat EFI_MEMORY_DESCRIPTOR.Attribute as really

@@ -1353,6 +1353,10 @@ GuardFreedPages (
     return;
   }
 
+  
+  DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 75 GuardPage: 0x%llx GuardPageNumber: 0x%llx\n", BaseAddress, Pages));
+  // OSDDEBUG need to report this in the GCD, otherwise we could still allocate it as free memory?
+
   MarkFreedPages (BaseAddress, Pages);
 
   if (gCpu == NULL) {
@@ -1451,6 +1455,8 @@ GuardAllFreedPages (
   UINT64  BitIndex;
   UINTN   GuardPageNumber;
 
+  DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 70 guarding all free pages\n"));
+
   if ((mGuardedMemoryMap == 0) ||
       (mMapLevel == 0) ||
       (mMapLevel > GUARDED_HEAP_MAP_TABLE_DEPTH))
@@ -1479,34 +1485,36 @@ GuardAllFreedPages (
       TableEntry = ((UINT64 *)(UINTN)(Tables[Level]))[Indices[Level]];
       Address    = Addresses[Level];
 
-      if (Level < GUARDED_HEAP_MAP_TABLE_DEPTH - 1) {
-        Level           += 1;
-        Tables[Level]    = TableEntry;
-        Addresses[Level] = Address;
-        Indices[Level]   = 0;
+      if (TableEntry != 0) {
+        if (Level < GUARDED_HEAP_MAP_TABLE_DEPTH - 1) {
+          Level           += 1;
+          Tables[Level]    = TableEntry;
+          Addresses[Level] = Address;
+          Indices[Level]   = 0;
 
-        continue;
-      } else {
-        BitIndex = 1;
-        while (BitIndex != 0) {
-          if ((TableEntry & BitIndex) != 0) {
-            if (GuardPage == (UINT64)-1) {
-              GuardPage = Address;
+          continue;
+        } else {
+          BitIndex = 1;
+          while (BitIndex != 0) {
+            if ((TableEntry & BitIndex) != 0) {
+              if (GuardPage == (UINT64)-1) {
+                GuardPage = Address;
+              }
+
+              ++GuardPageNumber;
+            } else if (GuardPageNumber > 0) {
+              GuardFreedPages (GuardPage, GuardPageNumber);
+              GuardPageNumber = 0;
+              GuardPage       = (UINT64)-1;
             }
 
-            ++GuardPageNumber;
-          } else if (GuardPageNumber > 0) {
-            GuardFreedPages (GuardPage, GuardPageNumber);
-            GuardPageNumber = 0;
-            GuardPage       = (UINT64)-1;
-          }
+            if (TableEntry == 0) {
+              break;
+            }
 
-          if (TableEntry == 0) {
-            break;
+            Address += EFI_PAGES_TO_SIZE (1);
+            BitIndex = LShiftU64 (BitIndex, 1);
           }
-
-          Address += EFI_PAGES_TO_SIZE (1);
-          BitIndex = LShiftU64 (BitIndex, 1);
         }
       }
     }
@@ -1528,6 +1536,8 @@ GuardAllFreedPages (
   if (Address != 0) {
     mLastPromotedPage = Address;
   }
+
+  DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 71 done guarding all free pages\n"));
 }
 
 /**

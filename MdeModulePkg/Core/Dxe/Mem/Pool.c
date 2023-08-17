@@ -542,6 +542,8 @@ Done:
 
     DEBUG_CLEAR_MEMORY (Buffer, Size);
 
+    DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 66 Buffer allocated 0x%llx\n", Buffer));
+
     DEBUG ((
       DEBUG_POOL,
       "AllocatePoolI: Type %x, Addr %p (len %lx) %,ld\n",
@@ -731,9 +733,12 @@ CoreFreePoolI (
   Head = BASE_CR (Buffer, POOL_HEAD, Data);
   ASSERT (Head != NULL);
 
+  DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 62 Head->Data 0x%llx Signature: 0x%x Buffer 0x%llx\n", Head->Data, Head->Signature, Buffer));
+
   if ((Head->Signature != POOL_HEAD_SIGNATURE) &&
       (Head->Signature != POOLPAGE_HEAD_SIGNATURE))
   {
+    CoreDumpGcdMemorySpaceMap (TRUE);
     ASSERT (
       Head->Signature == POOL_HEAD_SIGNATURE ||
       Head->Signature == POOLPAGE_HEAD_SIGNATURE

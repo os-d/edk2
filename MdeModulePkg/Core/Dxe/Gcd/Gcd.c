@@ -478,7 +478,7 @@ CoreInsertGcdMapEntry (
     Entry->BaseAddress      = BaseAddress;
     BottomEntry->EndAddress = BaseAddress - 1;
     InsertTailList (Link, &BottomEntry->Link);
-    DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 337 BaseAddress 0x%llx Entry->BaseAddress 0x%llx BottomEntry->EndAddress 0x%llx\n", BaseAddress, Entry->BaseAddress, BottomEntry->EndAddress));
+    DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 337 BaseAddress 0x%llx Entry->BaseAddress 0x%llx BottomEntry->EndAddress 0x%llx &BottomEntry->Link 0x%llx\n", BaseAddress, Entry->BaseAddress, BottomEntry->EndAddress, &BottomEntry->Link));
   }
 
   if ((BaseAddress + Length - 1) < Entry->EndAddress) {
@@ -488,16 +488,10 @@ CoreInsertGcdMapEntry (
     TopEntry->BaseAddress = BaseAddress + Length;
     Entry->EndAddress     = BaseAddress + Length - 1;
     InsertHeadList (Link, &TopEntry->Link);
-    DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 338 BaseAddress 0x%llx Entry->EndAddress 0x%llx TopEntry->BaseAddress 0x%llx\n", BaseAddress, Entry->EndAddress, TopEntry->BaseAddress));
+    DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 338 BaseAddress 0x%llx Entry->EndAddress 0x%llx TopEntry->BaseAddress 0x%llx &TopEntry->Link 0x%llx\n", BaseAddress, Entry->EndAddress, TopEntry->BaseAddress, &TopEntry->Link));
   }
 
   DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 339 BaseAddress 0x%llx Entry->BaseAddress 0x%llx Entry->EndAddress 0x%llx TopEntry->BaseAddress 0x%llx TopEntry->EndAddress 0x%llx BottomEntry->BaseAddress 0x%llx BottomEntry->EndAddress 0x%llx\n", BaseAddress, Entry->BaseAddress, Entry->EndAddress, TopEntry->BaseAddress, TopEntry->EndAddress, BottomEntry->BaseAddress, BottomEntry->EndAddress));
-
-  if (BaseAddress == 0x7E145000) {
-    CoreReleaseGcdMemoryLock ();
-    CoreDumpGcdMemorySpaceMap (FALSE);
-    CoreAcquireGcdMemoryLock ();
-  }
 
   return EFI_SUCCESS;
 }
@@ -582,9 +576,11 @@ CoreMergeGcdMapEntry (
     Entry->BaseAddress = AdjacentEntry->BaseAddress;
   }
 
+  DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 67 AdjacentEntry 0x%llx AdjacentLink 0x%llx Link 0x%llx\n", AdjacentEntry, AdjacentLink, Link));
   RemoveEntryList (AdjacentLink);
   // Freeing the pool can cause pages to get freed, drop the lock in case
   CoreReleaseLock (Lock);
+  DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 67 AdjacentEntry 0x%llx\n", AdjacentEntry));
   CoreFreePool (AdjacentEntry);
   CoreAcquireLock (Lock);
 
@@ -1781,14 +1777,14 @@ CoreSetMemorySpaceAttributes (
   )
 {
   // EFI_STATUS Status;
-  DEBUG ((DEBUG_GCD, "GCD:SetMemorySpaceAttributes(Base=%016lx,Length=%016lx)\n", BaseAddress, Length));
-  DEBUG ((DEBUG_GCD, "  Attributes  = %016lx\n", Attributes));
+  DEBUG ((DEBUG_ERROR, "GCD:SetMemorySpaceAttributes(Base=%016lx,Length=%016lx)\n", BaseAddress, Length));
+  DEBUG ((DEBUG_ERROR, "  Attributes  = %016lx\n", Attributes));
 
   // CoreAcquireGcdMemoryLock ();
   // Status = CoreConvertPagesEx (BaseAddress, Length, FALSE, 0, TRUE, Attributes, FALSE, 0);
   // ASSERT_EFI_ERROR (Status);
   // CoreReleaseGcdMemoryLock ();
-
+  // return Status;
   return CoreConvertSpace (GCD_SET_ATTRIBUTES_MEMORY_OPERATION, (EFI_GCD_MEMORY_TYPE)0, (EFI_GCD_IO_TYPE)0, BaseAddress, Length, 0, Attributes); // OSDDEBUG both should be called here because CoreConvertPagesEx doesn't call into page table!! Or we need to merge functionality
 }
 
@@ -1819,8 +1815,8 @@ CoreSetMemorySpaceCapabilities (
 {
   EFI_STATUS  Status;
 
-  DEBUG ((DEBUG_GCD, "GCD:CoreSetMemorySpaceCapabilities(Base=%016lx,Length=%016lx)\n", BaseAddress, Length));
-  DEBUG ((DEBUG_GCD, "  Capabilities  = %016lx\n", Capabilities));
+  DEBUG ((DEBUG_ERROR, "GCD:CoreSetMemorySpaceCapabilities(Base=%016lx,Length=%016lx)\n", BaseAddress, Length));
+  DEBUG ((DEBUG_ERROR, "  Capabilities  = %016lx\n", Capabilities));
 
   // OSDDEBUG, this needs to be able to split up descriptors if required, which is why I went to CoreConvertPagesEx, because it partially does that. It works for non-heapguard cases because the memory gets allocated first then attributes changed.
   // maybe simpler answer is getting heap guard a bit smarter
