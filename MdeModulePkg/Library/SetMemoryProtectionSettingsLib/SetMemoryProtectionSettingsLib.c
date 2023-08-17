@@ -38,7 +38,7 @@ STATIC MEMORY_PROTECTION_SETTINGS_PRIVATE  *mMpsp = NULL;
   TRUE, /* Stack Guard */                             \
   TRUE, /* Stack Execution Protection */              \
   {     /* NULL Pointer Detection */                  \
-    .Enabled                                = TRUE,   \
+    .Enabled                                = FALSE,   \
     .DisableEndOfDxe                        = FALSE,  \
     .NonstopModeEnabled                     = FALSE    \
   },                                                  \

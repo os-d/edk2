@@ -163,11 +163,12 @@ CoreAddRange (
   // at address 0, then do not zero the page at address 0 because the page is being
   // used for other purposes.
   //
-  // if ((EfiMemoryType == EfiConventionalMemory) && (Start == 0) && (End >= EFI_PAGE_SIZE - 1)) {
-  //   if (!gMps.Dxe.NullPointerDetection.Enabled) {
-  //     SetMem ((VOID *)(UINTN)Start, EFI_PAGE_SIZE, 0);
-  //   }
-  // }
+  if ((EfiMemoryType == EfiConventionalMemory) && (Start == 0) && (End >= EFI_PAGE_SIZE - 1)) {
+    if (!gMps.Dxe.NullPointerDetection.Enabled) {
+      DEBUG ((DEBUG_ERROR, "OSDDEBUG 400 Start 0x%llx\n", Start));
+      SetMem ((VOID *)(UINTN)Start, EFI_PAGE_SIZE, 0);
+    }
+  }
 
   //
   // Memory map being altered so updated key
@@ -183,7 +184,7 @@ CoreAddRange (
   // function the notificaiton events will only be called after this function
   // returns and the lock is released.
   //
-  CoreNotifySignalList (&gEfiEventMemoryMapChangeGuid);
+  CoreNotifySignalList (&gEfiEventMemoryMapChangeGuid); // Need to revist this, should every gcd update trigger this?
 
   //
   // Look for adjoining memory descriptor
