@@ -163,9 +163,10 @@ CoreAddRange (
   // at address 0, then do not zero the page at address 0 because the page is being
   // used for other purposes.
   //
-  if ((EfiMemoryType == EfiConventionalMemory) && (Start == 0) && (End >= EFI_PAGE_SIZE - 1)) {
+  if ((EfiMemoryType == EfiConventionalMemory) && (Start == 0) && (End >= EFI_PAGE_SIZE - 1) &&
+      (GcdMemoryType == EfiGcdMemoryTypeSystemMemory))
+  {
     if (!gMps.Dxe.NullPointerDetection.Enabled) {
-      DEBUG ((DEBUG_ERROR, "OSDDEBUG 400 Start 0x%llx\n", Start));
       SetMem ((VOID *)(UINTN)Start, EFI_PAGE_SIZE, 0);
     }
   }
@@ -336,8 +337,8 @@ CoreFreeMemoryMapStack (
     //
     // Dequeue an memory map entry from mFreeMemoryMapEntryList
     //
-    
-    Entry = AllocateMemoryMapEntry (); 
+
+    Entry = AllocateMemoryMapEntry ();
 
     ASSERT (Entry);
 
@@ -346,7 +347,7 @@ CoreFreeMemoryMapStack (
     //
     mMapDepth -= 1;
 
-    if (mMapStack[mMapDepth].Link.ForwardLink != NULL/*mMapStack[mMapDepth].FromPages == FALSE*/) {
+    if (mMapStack[mMapDepth].Link.ForwardLink != NULL /*mMapStack[mMapDepth].FromPages == FALSE*/) {
       //
       // Move this entry to general memory
       //
@@ -361,19 +362,21 @@ CoreFreeMemoryMapStack (
       //
       for (Link2 = mGcdMemorySpaceMap.ForwardLink; Link2 != &mGcdMemorySpaceMap; Link2 = Link2->ForwardLink) {
         Entry2 = CR (Link2, EFI_GCD_MAP_ENTRY, Link, EFI_GCD_MAP_SIGNATURE);
-        if (Entry2->FromPages && (Entry2->BaseAddress > Entry->BaseAddress)) { // OSDDEBUG are we missing things that are not FromPages?
+        if (Entry2->FromPages && (Entry2->BaseAddress > Entry->BaseAddress)) {
+          // OSDDEBUG are we missing things that are not FromPages?
           DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 623 found place Entry2->BaseAddress: 0x%llx Entry2->EndAddress: 0x%llx Entry->BaseAddress: 0x%llx Entry->EndAddress: 0x%llx\n", Entry2->BaseAddress, Entry2->EndAddress, Entry->BaseAddress, Entry->EndAddress));
           break;
         }
       }
 
       DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 624 found place Entry2->BaseAddress: 0x%llx Entry2->EndAddress: 0x%llx Entry->BaseAddress: 0x%llx Entry->EndAddress: 0x%llx\n", Entry2->BaseAddress, Entry2->EndAddress, Entry->BaseAddress, Entry->EndAddress));
-      if ((UINTN)Entry->BaseAddress == 0x7D544000 || (UINTN)Entry->BaseAddress == 0x7D4F8000) {
+      if (((UINTN)Entry->BaseAddress == 0x7D544000) || ((UINTN)Entry->BaseAddress == 0x7D4F8000)) {
         DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 630 %a\n", __func__));
         CoreDumpGcdMemorySpaceMap (FALSE);
-      }    
+      }
+
       InsertTailList (Link2, &Entry->Link);
-      if ((UINTN)Entry->BaseAddress == 0x7D544000 || (UINTN)Entry->BaseAddress == 0x7D4F8000) {
+      if (((UINTN)Entry->BaseAddress == 0x7D544000) || ((UINTN)Entry->BaseAddress == 0x7D4F8000)) {
         DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 631 %a\n", __func__));
         CoreDumpGcdMemorySpaceMap (FALSE);
       }
@@ -382,10 +385,11 @@ CoreFreeMemoryMapStack (
       // This item of mMapStack[mMapDepth] has already been dequeued from mMemorySpaceMap list,
       // so here no need to move it to memory.
       //
-      if ((UINTN)Entry->BaseAddress == 0x7D544000 || (UINTN)Entry->BaseAddress == 0x7D4F8000) {
+      if (((UINTN)Entry->BaseAddress == 0x7D544000) || ((UINTN)Entry->BaseAddress == 0x7D4F8000)) {
         DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 632 %a\n", __func__));
         CoreDumpGcdMemorySpaceMap (FALSE);
       }
+
       DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 621 already dequeued Entry->BaseAddress 0x%llx Entry->EndAddress 0x%llx\n", Entry->BaseAddress, Entry->EndAddress));
       InsertTailList (&mFreeMemoryMapEntryList, &Entry->Link);
     }
@@ -479,8 +483,10 @@ CoreLoadingFixedAddressHook (
   @return None.  The range is added to the memory map
 
 **/
-VOID // OSDDEBUG add hob reserved mem here, need to split existing descriptors.
-CoreAddMemoryDescriptor ( // OSDDEBUG, need merging logic here, probably, though maybe just better maintenance on calling it
+VOID
+// OSDDEBUG add hob reserved mem here, need to split existing descriptors.
+CoreAddMemoryDescriptor (
+  // OSDDEBUG, need merging logic here, probably, though maybe just better maintenance on calling it
   IN EFI_MEMORY_TYPE       EfiMemoryType,
   IN EFI_GCD_MEMORY_TYPE   GcdMemoryType,
   IN EFI_PHYSICAL_ADDRESS  Start,
@@ -714,9 +720,9 @@ CoreConvertPagesEx (
       Entry = CR (Link, EFI_GCD_MAP_ENTRY, Link, EFI_GCD_MAP_SIGNATURE);
 
       if ((Entry->BaseAddress <= Start) && (Entry->EndAddress > Start)) {
-        Capabilities = Entry->Capabilities;
+        Capabilities     = Entry->Capabilities;
         EfiGcdMemoryType = Entry->GcdMemoryType; // OSDDEBUG merge EfiGcdMemoryType and EfiMemoryType?
-        ImageHandle = Entry->ImageHandle;
+        ImageHandle      = Entry->ImageHandle;
         break;
       }
     }
@@ -806,10 +812,10 @@ CoreConvertPagesEx (
       }
     }
 
-    if ((UINTN)Start == 0x7D544000 || (UINTN)Start == 0x7D4F8000) {
-        DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 611 %a\n", __func__));
-        CoreDumpGcdMemorySpaceMap (FALSE);
-      }
+    if (((UINTN)Start == 0x7D544000) || ((UINTN)Start == 0x7D4F8000)) {
+      DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 611 %a\n", __func__));
+      CoreDumpGcdMemorySpaceMap (FALSE);
+    }
 
     //
     // Pull range out of descriptor
@@ -865,16 +871,16 @@ CoreConvertPagesEx (
     //
     // OSDDEBUG, could be merged with converting gcd mem type?
     if (ChangingType) {
-      Attribute = Entry->Attributes;
-      Capabilities = Entry->Capabilities;
-      EfiMemoryType   = NewType;
+      Attribute     = Entry->Attributes;
+      Capabilities  = Entry->Capabilities;
+      EfiMemoryType = NewType;
     } else if (ChangingAttributes) {
-      Attribute = NewAttributes;
-      EfiMemoryType   = Entry->EfiMemoryType;
-    } else {
-      Capabilities = NewCapabilities;
+      Attribute     = NewAttributes;
       EfiMemoryType = Entry->EfiMemoryType;
-      Attribute = Entry->Attributes;
+    } else {
+      Capabilities  = NewCapabilities;
+      EfiMemoryType = Entry->EfiMemoryType;
+      Attribute     = Entry->Attributes;
     }
 
     //
@@ -911,6 +917,7 @@ CoreConvertPagesEx (
         if (Start == 0x7BF2F000) {
           DumpGuardedMemoryBitmap ();
         }
+
         DEBUG_CLEAR_MEMORY ((VOID *)(UINTN)Start, (UINTN)(RangeEnd - Start + 1));
         DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 710 Start: 0x%llx RangeEnd - Start + 1 0x%llx RangeEnd 0x%llx Start 0x%llx\n", Start, (RangeEnd - Start + 1), RangeEnd, Start));
       }
@@ -1221,6 +1228,7 @@ FindFreePages (
   if (!PromoteGuardedFreePages (&StartAddress, &EndAddress)) {
     return 0;
   }
+
   DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 751\n"));
 
   //
@@ -1458,7 +1466,8 @@ Done:
 **/
 EFI_STATUS
 EFIAPI
-CoreAllocatePages ( // OSDDEBUG need to make sure we aren't getting nonexistent ranges
+CoreAllocatePages (
+  // OSDDEBUG need to make sure we aren't getting nonexistent ranges
   IN  EFI_ALLOCATE_TYPE     Type,
   IN  EFI_MEMORY_TYPE       MemoryType,
   IN  UINTN                 NumberOfPages,
@@ -2067,8 +2076,8 @@ CoreAllocatePoolPages (
   IN BOOLEAN          NeedGuard
   )
 {
-  UINT64  Start;
-  EFI_STATUS Status;
+  UINT64      Start;
+  EFI_STATUS  Status;
 
   //
   // Find the pages to convert
@@ -2089,13 +2098,13 @@ CoreAllocatePoolPages (
   } else {
     if (NeedGuard) {
       Status = CoreConvertPagesWithGuard (Start, NumberOfPages, PoolType); // OSDDEBUG added the failure here, Start = 0, probably is legit?
-      DEBUG((DEBUG_VERBOSE, "OSDDEBUG 531 %a Start 0x%llx NumberOfPages 0x%llx Status %r\n", __func__, Start, NumberOfPages, Status));
+      DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 531 %a Start 0x%llx NumberOfPages 0x%llx Status %r\n", __func__, Start, NumberOfPages, Status));
       if (EFI_ERROR (Status)) {
         Start = 0;
       }
     } else {
       Status = CoreConvertPages (Start, NumberOfPages, PoolType);
-      DEBUG((DEBUG_VERBOSE, "OSDDEBUG 612 %a Start 0x%llx NumberOfPages 0x%llx Status %r\n", __func__, Start, NumberOfPages, Status));
+      DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 612 %a Start 0x%llx NumberOfPages 0x%llx Status %r\n", __func__, Start, NumberOfPages, Status));
       if (EFI_ERROR (Status)) {
         Start = 0;
       }
