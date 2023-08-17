@@ -344,7 +344,7 @@ CpuDxeInitialize (
   //
   DEBUG ((DEBUG_ERROR, "OSDDEBUG 73 starting cache sync\n"));
   mIsFlushingGCD = TRUE;
-  SyncCacheConfig (&mCpu);
+  SyncCacheConfig (&mCpu); // OSDDEBUG maybe we want to sync this before the protocol, actually, so that we don't set something new in the protocol dispatch, then overwrite it here, but I guess this is grabbing from the page table that would be updated, so not an issue, probably
   mIsFlushingGCD = FALSE;
   DEBUG ((DEBUG_ERROR, "OSDDEBUG 74 ending cache sync\n"));
 

@@ -35,16 +35,16 @@ STATIC MEMORY_PROTECTION_SETTINGS_PRIVATE  *mMpsp = NULL;
 {                                                     \
   DXE_MEMORY_PROTECTION_SIGNATURE,                    \
   DXE_MEMORY_PROTECTION_SETTINGS_CURRENT_VERSION,     \
-  FALSE, /* Stack Guard */                             \
-  FALSE, /* Stack Execution Protection */              \
+  TRUE, /* Stack Guard */                             \
+  TRUE, /* Stack Execution Protection */              \
   {     /* NULL Pointer Detection */                  \
-    .Enabled                                = FALSE,   \
+    .Enabled                                = TRUE,   \
     .DisableEndOfDxe                        = FALSE,  \
     .NonstopModeEnabled                     = FALSE    \
   },                                                  \
   { /* Image Protection */                            \
-    .ProtectImageFromUnknown                = FALSE,   \
-    .ProtectImageFromFv                     = FALSE    \
+    .ProtectImageFromUnknown                = TRUE,   \
+    .ProtectImageFromFv                     = TRUE    \
   },                                                  \
   { /* Execution Protection */                        \
     .EnabledForType = {                               \
@@ -52,13 +52,13 @@ STATIC MEMORY_PROTECTION_SETTINGS_PRIVATE  *mMpsp = NULL;
       [EfiLoaderCode]                       = FALSE,  \
       [EfiLoaderData]                       = TRUE,   \
       [EfiBootServicesCode]                 = FALSE,  \
-      [EfiBootServicesData]                 = FALSE,   \
+      [EfiBootServicesData]                 = TRUE,   \
       [EfiRuntimeServicesCode]              = FALSE,  \
-      [EfiRuntimeServicesData]              = FALSE,   \
-      [EfiConventionalMemory]               = FALSE,   \
+      [EfiRuntimeServicesData]              = TRUE,   \
+      [EfiConventionalMemory]               = TRUE,   \
       [EfiUnusableMemory]                   = TRUE,   \
-      [EfiACPIReclaimMemory]                = FALSE,   \
-      [EfiACPIMemoryNVS]                    = FALSE,   \
+      [EfiACPIReclaimMemory]                = TRUE,   \
+      [EfiACPIMemoryNVS]                    = TRUE,   \
       [EfiMemoryMappedIO]                   = TRUE,   \
       [EfiMemoryMappedIOPortSpace]          = TRUE,   \
       [EfiPalCode]                          = TRUE,   \
@@ -69,8 +69,8 @@ STATIC MEMORY_PROTECTION_SETTINGS_PRIVATE  *mMpsp = NULL;
     }                                                 \
   },                                                  \
   { /* Heap Guard */                                  \
-    .PageGuardEnabled                       = FALSE,   \
-    .PoolGuardEnabled                       = FALSE,   \
+    .PageGuardEnabled                       = TRUE,   \
+    .PoolGuardEnabled                       = TRUE,   \
     .FreedMemoryGuardEnabled                = FALSE,  \
     .NonstopModeEnabled                     = FALSE,   \
     .GuardAlignedToTail                     = FALSE   \

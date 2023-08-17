@@ -230,10 +230,10 @@ SetUefiImageMemoryAttributes (
 
   ASSERT (gCpu != NULL);
 
-  Status = CoreSetMemorySpaceCapabilities (BaseAddress, Length, Descriptor.Capabilities | FinalAttributes);
-  ASSERT_EFI_ERROR (Status);
-  // gCpu->SetMemoryAttributes (gCpu, BaseAddress, Length, FinalAttributes);
-  Status = CoreSetMemorySpaceAttributes (BaseAddress, Length, FinalAttributes);
+  // Status = CoreSetMemorySpaceCapabilities (BaseAddress, Length, Descriptor.Capabilities | FinalAttributes);
+  // ASSERT_EFI_ERROR (Status);
+  gCpu->SetMemoryAttributes (gCpu, BaseAddress, Length, FinalAttributes);
+  // Status = CoreSetMemorySpaceAttributes (BaseAddress, Length, FinalAttributes);
   ASSERT_EFI_ERROR (Status); // OSDDEBUG probably need to set capabilities first?
 }
 
@@ -905,14 +905,14 @@ InitializeDxeNxMemoryProtectionPolicy (
           ));
 
         ASSERT (gCpu != NULL);
-        Status = CoreSetMemorySpaceCapabilities (Entry->BaseAddress, Entry->EndAddress - Entry->BaseAddress + 1, Entry->Capabilities | Attributes);
-        // gCpu->SetMemoryAttributes (
-        //         gCpu,
-        //         Entry->BaseAddress,
-        //         Entry->EndAddress - Entry->BaseAddress + 1,
-        //         Attributes
-        //         );
-        Status = CoreSetMemorySpaceAttributes (Entry->BaseAddress, Entry->EndAddress - Entry->BaseAddress + 1, Attributes);
+        // Status = CoreSetMemorySpaceCapabilities (Entry->BaseAddress, Entry->EndAddress - Entry->BaseAddress + 1, Entry->Capabilities | Attributes);
+        gCpu->SetMemoryAttributes (
+                gCpu,
+                Entry->BaseAddress,
+                Entry->EndAddress - Entry->BaseAddress + 1,
+                Attributes
+                );
+        // Status = CoreSetMemorySpaceAttributes (Entry->BaseAddress, Entry->EndAddress - Entry->BaseAddress + 1, Attributes);
         // OSDEBUG probably need to do capabilities before this
         ASSERT_EFI_ERROR (Status);
       }
@@ -1323,8 +1323,8 @@ ApplyMemoryProtectionPolicy (
 {
   UINT64  OldAttributes;
   UINT64  NewAttributes;
-  EFI_GCD_MEMORY_SPACE_DESCRIPTOR GcdDescriptor;
-  EFI_STATUS Status;
+  // EFI_GCD_MEMORY_SPACE_DESCRIPTOR GcdDescriptor;
+  // EFI_STATUS Status;
 
   //
   // The policy configured in DXE Execution Protection Policy
@@ -1390,13 +1390,13 @@ ApplyMemoryProtectionPolicy (
     return EFI_SUCCESS;
   }
 
-  Status = CoreGetMemorySpaceDescriptor (Memory, &GcdDescriptor);
-  ASSERT_EFI_ERROR (Status);
+  // Status = CoreGetMemorySpaceDescriptor (Memory, &GcdDescriptor);
+  // ASSERT_EFI_ERROR (Status);
 
-  Status = CoreSetMemorySpaceCapabilities (Memory, Length, GcdDescriptor.Capabilities | NewAttributes);
-  ASSERT_EFI_ERROR (Status);
+  // Status = CoreSetMemorySpaceCapabilities (Memory, Length, GcdDescriptor.Capabilities | NewAttributes);
+  // ASSERT_EFI_ERROR (Status);
 
-  // return gCpu->SetMemoryAttributes (gCpu, Memory, Length, NewAttributes);
+  return gCpu->SetMemoryAttributes (gCpu, Memory, Length, NewAttributes);
   // OSDDEBUG need to do capabilities first?
-  return CoreSetMemorySpaceAttributes (Memory, Length, NewAttributes);
+  // return CoreSetMemorySpaceAttributes (Memory, Length, NewAttributes);
 }
