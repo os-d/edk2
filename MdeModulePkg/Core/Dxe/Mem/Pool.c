@@ -229,6 +229,7 @@ CoreInternalAllocatePool (
   // Base on the EFI spec, return status of EFI_OUT_OF_RESOURCES
   //
   if (Size > MAX_POOL_SIZE) {
+    DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 312\n"));
     return EFI_OUT_OF_RESOURCES;
   }
 
@@ -237,13 +238,16 @@ CoreInternalAllocatePool (
   //
   // Acquire the memory lock and make the allocation
   //
+  DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 316 acquiring pool lock\n"));
   Status = CoreAcquireLockOrFail (&mPoolMemoryLock);
   if (EFI_ERROR (Status)) {
+    DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 313\n"));
     return EFI_OUT_OF_RESOURCES;
   }
 
   *Buffer = CoreAllocatePoolI (PoolType, Size, NeedGuard);
   CoreReleaseLock (&mPoolMemoryLock);
+  DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 317 releasing pool lock\n"));
   return (*Buffer != NULL) ? EFI_SUCCESS : EFI_OUT_OF_RESOURCES;
 }
 
@@ -312,13 +316,21 @@ CoreAllocatePoolPagesI (
   VOID        *Buffer;
   EFI_STATUS  Status;
 
-  Status = CoreAcquireLockOrFail (&gMemoryLock);
+  // we expect to have the pool lock locked when we arrive here, but as we are allocating more pages, we
+  // need to release the lock in case the page management code allocates more pool mem for GCD entries
+  ASSERT_LOCKED (&mPoolMemoryLock);
+  CoreReleaseLock (&mPoolMemoryLock);
+
+  DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 230\n"));
+  Status = CoreAcquireLockOrFail (&mGcdMemorySpaceLock);
   if (EFI_ERROR (Status)) {
+    DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 210 failed to release gcd lock\n"));
+    CoreAcquireLock (&mPoolMemoryLock);
     return NULL;
   }
 
   Buffer = CoreAllocatePoolPages (PoolType, NoPages, Granularity, NeedGuard);
-  CoreReleaseMemoryLock ();
+  CoreReleaseGcdMemoryLock ();
 
   if (Buffer != NULL) {
     if (NeedGuard) {
@@ -333,6 +345,7 @@ CoreAllocatePoolPagesI (
       );
   }
 
+  CoreAcquireLock (&mPoolMemoryLock);
   return Buffer;
 }
 
@@ -399,6 +412,7 @@ CoreAllocatePoolI (
   Index = SIZE_TO_LIST (Size);
   Pool  = LookupPoolHead (PoolType);
   if (Pool == NULL) {
+    DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 311\n"));
     return NULL;
   }
 
@@ -414,9 +428,14 @@ CoreAllocatePoolI (
     }
 
     NoPages  = EFI_SIZE_TO_PAGES (Size) + EFI_SIZE_TO_PAGES (Granularity) - 1;
+    DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 743 Head: 0x%llx NoPages: 0x%llx Size: 0x%llx SIZE_TO_PAGES: 0x%llx Gran: 0x%llx SIZE_TO_PAGES (Gran): 0x%llx\n", Head, NoPages, Size, EFI_SIZE_TO_PAGES (Size), Granularity, EFI_SIZE_TO_PAGES (Granularity)));
     NoPages &= ~(UINTN)(EFI_SIZE_TO_PAGES (Granularity) - 1);
     Head     = CoreAllocatePoolPagesI (PoolType, NoPages, Granularity, NeedGuard);
+    if (Head == NULL) {
+      DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 207\n"));
+    }
     if (NeedGuard) {
+      DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 725 Head: 0x%llx NoPages: 0x%llx Size: 0x%llx\n", Head, NoPages, Size));
       Head = AdjustPoolHeadA ((EFI_PHYSICAL_ADDRESS)(UINTN)Head, NoPages, Size);
     }
 
@@ -439,6 +458,7 @@ CoreAllocatePoolI (
         RemoveEntryList (&Free->Link);
         NewPage   = (VOID *)Free;
         MaxOffset = LIST_TO_SIZE (Index);
+        DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 206 NewPage 0x%llx MaxOffset 0x%llx\n"));
         goto Carve;
       }
     }
@@ -453,6 +473,7 @@ CoreAllocatePoolI (
                 NeedGuard
                 );
     if (NewPage == NULL) {
+      DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 205\n"));
       goto Done;
     }
 
@@ -522,6 +543,8 @@ Done:
 
     DEBUG_CLEAR_MEMORY (Buffer, Size);
 
+    DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 66 Buffer allocated 0x%llx\n", Buffer));
+
     DEBUG ((
       DEBUG_POOL,
       "AllocatePoolI: Type %x, Addr %p (len %lx) %,ld\n",
@@ -560,9 +583,11 @@ CoreInternalFreePool (
     return EFI_INVALID_PARAMETER;
   }
 
+  DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 314 acquiring pool lock\n"));
   CoreAcquireLock (&mPoolMemoryLock);
   Status = CoreFreePoolI (Buffer, PoolType);
   CoreReleaseLock (&mPoolMemoryLock);
+  DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 315 releasing pool lock\n"));
   return Status;
 }
 
@@ -583,6 +608,8 @@ CoreFreePool (
 {
   EFI_STATUS       Status;
   EFI_MEMORY_TYPE  PoolType;
+
+  DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 462 Return Addr %p\n", RETURN_ADDRESS (0)));
 
   Status = CoreInternalFreePool (Buffer, &PoolType);
   if (!EFI_ERROR (Status)) {
@@ -616,9 +643,10 @@ CoreFreePoolPagesI (
   IN UINTN                 NoPages
   )
 {
-  CoreAcquireMemoryLock ();
+  DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 220\n"));
+  CoreAcquireGcdMemoryLock ();
   CoreFreePoolPages (Memory, NoPages);
-  CoreReleaseMemoryLock ();
+  CoreReleaseGcdMemoryLock ();
 
   GuardFreedPagesChecked (Memory, NoPages);
   ApplyMemoryProtectionPolicy (
@@ -651,7 +679,9 @@ CoreFreePoolPagesWithGuard (
   MemoryGuarded  = Memory;
   NoPagesGuarded = NoPages;
 
+  DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 701 freeing 0x%llx NoPages 0x%llx\n", Memory, NoPages));
   AdjustMemoryF (&Memory, &NoPages);
+  DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 702 freeing 0x%llx NoPages 0x%llx\n", Memory, NoPages));
   //
   // It's safe to unset Guard page inside memory lock because there should
   // be no memory allocation occurred in updating memory page attribute at
@@ -704,9 +734,12 @@ CoreFreePoolI (
   Head = BASE_CR (Buffer, POOL_HEAD, Data);
   ASSERT (Head != NULL);
 
+  DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 62 Head->Data 0x%llx Signature: 0x%x Buffer 0x%llx\n", Head->Data, Head->Signature, Buffer));
+
   if ((Head->Signature != POOL_HEAD_SIGNATURE) &&
       (Head->Signature != POOLPAGE_HEAD_SIGNATURE))
   {
+    CoreDumpGcdMemorySpaceMap (TRUE);
     ASSERT (
       Head->Signature == POOL_HEAD_SIGNATURE ||
       Head->Signature == POOLPAGE_HEAD_SIGNATURE
@@ -783,7 +816,7 @@ CoreFreePoolI (
     NoPages  = EFI_SIZE_TO_PAGES (Size) + EFI_SIZE_TO_PAGES (Granularity) - 1;
     NoPages &= ~(UINTN)(EFI_SIZE_TO_PAGES (Granularity) - 1);
     if (IsGuarded) {
-      Head = AdjustPoolHeadF ((EFI_PHYSICAL_ADDRESS)(UINTN)Head);
+      Head = AdjustPoolHeadF ((EFI_PHYSICAL_ADDRESS)(UINTN)Head, NoPages, Size);
       CoreFreePoolPagesWithGuard (
         Pool->MemoryType,
         (EFI_PHYSICAL_ADDRESS)(UINTN)Head,

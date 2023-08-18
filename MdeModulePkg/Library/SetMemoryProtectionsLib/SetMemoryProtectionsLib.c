@@ -39,10 +39,10 @@ typedef struct {
   {     /* NULL Pointer Detection */                  \
     .Enabled                                = TRUE,   \
     .DisableEndOfDxe                        = FALSE,  \
-    .NonstopModeEnabled                     = TRUE    \
+    .NonstopModeEnabled                     = FALSE    \
   },                                                  \
   { /* Image Protection */                            \
-    .ProtectImageFromUnknown                = TRUE,   \
+    .ProtectImageFromUnknown                = FALSE,   \
     .ProtectImageFromFv                     = TRUE    \
   },                                                  \
   { /* Execution Protection */                        \
@@ -68,10 +68,10 @@ typedef struct {
     }                                                 \
   },                                                  \
   { /* Heap Guard */                                  \
-    .PageGuardEnabled                       = TRUE,   \
+    .PageGuardEnabled                       = FALSE,   \
     .PoolGuardEnabled                       = TRUE,   \
     .FreedMemoryGuardEnabled                = FALSE,  \
-    .NonstopModeEnabled                     = TRUE,   \
+    .NonstopModeEnabled                     = FALSE,   \
     .GuardAlignedToTail                     = FALSE   \
   },                                                  \
   { /* Pool Guard */                                  \

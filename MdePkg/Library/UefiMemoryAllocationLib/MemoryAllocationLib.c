@@ -693,7 +693,9 @@ InternalReallocatePool (
   NewBuffer = InternalAllocateZeroPool (PoolType, NewSize);
   if ((NewBuffer != NULL) && (OldBuffer != NULL)) {
     CopyMem (NewBuffer, OldBuffer, MIN (OldSize, NewSize));
+    DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 722 OldBuffer: 0x%llx\n", OldBuffer));
     FreePool (OldBuffer);
+    DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 723 OldBuffer: 0x%llx\n", OldBuffer));
   }
 
   return NewBuffer;

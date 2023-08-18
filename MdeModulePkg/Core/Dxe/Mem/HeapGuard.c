@@ -506,20 +506,40 @@ SetGuardPage (
   )
 {
   EFI_STATUS  Status;
+  // EFI_GCD_MEMORY_SPACE_DESCRIPTOR  Descriptor;
 
   if (gCpu == NULL) {
+    // OSDDEBUG this gap needs to be closed with moving page table interfaces to GCD logic
     return;
   }
 
-  //
   // Set flag to make sure allocating memory without GUARD for page table
   // operation; otherwise infinite loops could be caused.
   //
   mOnGuarding = TRUE;
-  //
-  // Note: This might overwrite other attributes needed by other features,
-  // such as NX memory protection.
-  //
+
+  DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 300 Setting GuardPage on 0x%llx\n", BaseAddress));
+
+  // Status = CoreGetMemorySpaceDescriptor (BaseAddress, &Descriptor);
+  // if (EFI_ERROR (Status)) {
+  //   ASSERT_EFI_ERROR (Status);
+  //   mOnGuarding = FALSE;
+  //   return;
+  // }
+
+  // DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 301\n"));
+
+  // Status = CoreSetMemorySpaceCapabilities (BaseAddress, EFI_PAGE_SIZE, Descriptor.Capabilities | EFI_MEMORY_RP);
+  // if (EFI_ERROR (Status)) { // OSDDEBUG we should be having RP set as a capability always
+  //   ASSERT_EFI_ERROR (Status);
+  //   mOnGuarding = FALSE;
+  //   return;
+  // }
+
+  // Status = CoreSetMemorySpaceAttributes (BaseAddress, EFI_PAGE_SIZE, Descriptor.Attributes | EFI_MEMORY_RP);
+  if ((UINTN)BaseAddress == 0x7BF2F000) {
+          DumpGuardedMemoryBitmap ();
+  }
   Status = gCpu->SetMemoryAttributes (gCpu, BaseAddress, EFI_PAGE_SIZE, EFI_MEMORY_RP);
   ASSERT_EFI_ERROR (Status);
   mOnGuarding = FALSE;
@@ -542,8 +562,10 @@ UnsetGuardPage (
 {
   UINT64      Attributes;
   EFI_STATUS  Status;
+  // EFI_GCD_MEMORY_SPACE_DESCRIPTOR  Descriptor;
 
   if (gCpu == NULL) {
+    // OSDDEBUG this gap needs to be closed with moving page table interfaces to GCD logic
     return;
   }
 
@@ -562,13 +584,29 @@ UnsetGuardPage (
   // operation; otherwise infinite loops could be caused.
   //
   mOnGuarding = TRUE;
-  //
-  // Note: This might overwrite other attributes needed by other features,
-  // such as memory protection (NX). Please make sure they are not enabled
-  // at the same time.
-  //
+
+  DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 304 Unsetting GuardPage at 0x%llx\n", BaseAddress));
+
+  // Status = CoreGetMemorySpaceDescriptor (BaseAddress, &Descriptor);
+  // if (EFI_ERROR (Status)) {
+  //   ASSERT_EFI_ERROR (Status);
+  //   mOnGuarding = FALSE;
+  //   return;
+  // }
+
+  // DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 305\n"));
+
+  // Status = CoreSetMemorySpaceCapabilities (BaseAddress, EFI_PAGE_SIZE, Descriptor.Capabilities | Attributes);
+  // if (EFI_ERROR (Status)) { // OSDDEBUG we should be having XP set as a capability always
+  //   ASSERT_EFI_ERROR (Status);
+  //   mOnGuarding = FALSE;
+  //   return;
+  // }
+
+  // Status = CoreSetMemorySpaceAttributes (BaseAddress, EFI_PAGE_SIZE, Attributes); // OSDDEBUG should we also "free" the guard page here by changing the type? Probably
   Status = gCpu->SetMemoryAttributes (gCpu, BaseAddress, EFI_PAGE_SIZE, Attributes);
   ASSERT_EFI_ERROR (Status);
+
   mOnGuarding = FALSE;
 }
 
@@ -703,17 +741,24 @@ SetGuardForMemory (
   )
 {
   EFI_PHYSICAL_ADDRESS  GuardPage;
+  BOOLEAN Print = FALSE;
 
   //
   // Set tail Guard
   //
   GuardPage = Memory + EFI_PAGES_TO_SIZE (NumberOfPages);
+  if ((UINTN)GuardPage == 0x7BF2F000) {
+    Print = TRUE;
+  }
   if (!IsGuardPage (GuardPage)) {
     SetGuardPage (GuardPage);
   }
 
   // Set head Guard
   GuardPage = Memory - EFI_PAGES_TO_SIZE (1);
+  if ((UINTN)GuardPage == 0x7BF2F000) {
+    Print = TRUE;
+  }
   if (!IsGuardPage (GuardPage)) {
     SetGuardPage (GuardPage);
   }
@@ -722,6 +767,9 @@ SetGuardForMemory (
   // Mark the memory range as Guarded
   //
   SetGuardedMemoryBits (Memory, NumberOfPages);
+  if (Print) {
+          DumpGuardedMemoryBitmap ();
+  }
 }
 
 /**
@@ -758,12 +806,15 @@ UnsetGuardForMemory (
   //      Start -> -1    -2
   //
   GuardPage   = Memory - EFI_PAGES_TO_SIZE (1);
+  DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 469 GuardPage: 0x%llx\n", GuardPage));
   GuardBitmap = GetGuardedMemoryBits (Memory - EFI_PAGES_TO_SIZE (2), 2);
   if ((GuardBitmap & BIT1) == 0) {
+    DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 470 Head Guard GuardPage: 0x%llx\n", GuardPage));
     //
     // Head Guard exists.
     //
     if ((GuardBitmap & BIT0) == 0) {
+      DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 471 Can be unguarded GuardPage: 0x%llx\n", GuardPage));
       //
       // If the head Guard is not a tail Guard of adjacent memory block,
       // unset it.
@@ -771,6 +822,7 @@ UnsetGuardForMemory (
       UnsetGuardPage (GuardPage);
     }
   } else {
+    DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 472 partial free GuardPage: 0x%llx\n", GuardPage));
     //
     // Pages before memory to free are still in Guard. It's a partial free
     // case. Turn first page of memory block to free into a new Guard.
@@ -791,12 +843,15 @@ UnsetGuardForMemory (
   //        +1    +0 <- End
   //
   GuardPage   = Memory + EFI_PAGES_TO_SIZE (NumberOfPages);
+  DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 473 GuardPage: 0x%llx\n", GuardPage));
   GuardBitmap = GetGuardedMemoryBits (GuardPage, 2);
   if ((GuardBitmap & BIT0) == 0) {
+    DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 474 Tail guard GuardPage: 0x%llx\n", GuardPage));
     //
     // Tail Guard exists.
     //
     if ((GuardBitmap & BIT1) == 0) {
+      DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 475 not head guard GuardPage: 0x%llx\n", GuardPage));
       //
       // If the tail Guard is not a head Guard of adjacent memory block,
       // free it; otherwise, keep it.
@@ -804,6 +859,7 @@ UnsetGuardForMemory (
       UnsetGuardPage (GuardPage);
     }
   } else {
+    DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 476 partial free GuardPage: 0x%llx\n", GuardPage));
     //
     // Pages after memory to free are still in Guard. It's a partial free
     // case. We need to keep one page to be a head Guard.
@@ -920,6 +976,11 @@ AdjustMemoryF (
   //          -------------------
   //      Start -> -1    -2
   //
+  if ((UINTN)*Memory == 0x7BF2E000) {
+    DumpGuardedMemoryBitmap ();
+    DEBUG ((DEBUG_ERROR, "\n\n\n\n\n"));
+    CoreDumpGcdMemorySpaceMap (FALSE);
+  }
   MemoryToTest = Start - EFI_PAGES_TO_SIZE (2);
   GuardBitmap  = GetGuardedMemoryBits (MemoryToTest, 2);
   if ((GuardBitmap & BIT1) == 0) {
@@ -1012,7 +1073,7 @@ AdjustMemoryA (
 }
 
 /**
-  Adjust the pool head position to make sure the Guard page is adjavent to
+  Adjust the pool head position to make sure the Guard page is adjacent to
   pool tail or pool head.
 
   @param[in]  Memory    Base address of memory allocated.
@@ -1039,6 +1100,7 @@ AdjustPoolHeadA (
   //
   // Pool head is put near the tail Guard
   //
+  DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 740 Memory: 0x%llx Size: 0x%llx Aligned Size: 0x%llx NoPages 0x%llx Memory + Stuff 0x%llx\n", Memory, Size, ALIGN_VALUE (Size, 8), NoPages, Memory + EFI_PAGES_TO_SIZE (NoPages) - ALIGN_VALUE (Size, 8)));
   Size = ALIGN_VALUE (Size, 8);
   return (VOID *)(UINTN)(Memory + EFI_PAGES_TO_SIZE (NoPages) - Size);
 }
@@ -1052,7 +1114,9 @@ AdjustPoolHeadA (
 **/
 VOID *
 AdjustPoolHeadF (
-  IN EFI_PHYSICAL_ADDRESS  Memory
+  IN EFI_PHYSICAL_ADDRESS  Memory,
+  IN UINTN                 NoPages,
+  IN UINTN                 Size
   )
 {
   if ((Memory == 0) || (!gMps.Dxe.HeapGuard.GuardAlignedToTail)) {
@@ -1065,7 +1129,8 @@ AdjustPoolHeadF (
   //
   // Pool head is put near the tail Guard
   //
-  return (VOID *)(UINTN)(Memory & ~EFI_PAGE_MASK);
+  DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 741 Memory: 0x%llx Memory & ~Stuff 0x%llx Memory + Stuff 0x%llx NoPages 0x%llx Size 0x%llx\n", Memory, Memory & ~EFI_PAGE_MASK, (Memory + Size - EFI_PAGES_TO_SIZE (NoPages)) & 0xFFFFFFFF, NoPages, Size)); // OSDDEBUG this doesn't seem to work if the NoPages are high and the size is small? Why are we getting such a large number of pages?
+  return (VOID *)(UINTN)(Memory + Size - EFI_PAGES_TO_SIZE (NoPages));
 }
 
 /**
@@ -1085,7 +1150,7 @@ CoreConvertPagesWithGuard (
   )
 {
   UINT64  OldStart;
-  UINTN   OldPages;
+  UINTN   OldPages; // OSDDEBUG something wrong here, so many pages?
 
   if (NewType == EfiConventionalMemory) {
     OldStart = Start;
@@ -1104,7 +1169,19 @@ CoreConvertPagesWithGuard (
       return EFI_SUCCESS;
     }
   } else {
+    if (Start == 0x7DED0000) {
+      DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 552 %a Start: 0x%llx NumberOfPages: 0x%llx\n", __func__, Start, NumberOfPages));
+    }
     AdjustMemoryA (&Start, &NumberOfPages);
+     if (Start == 0x7DED0000) {
+      DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 553 %a Start: 0x%llx NumberOfPages: 0x%llx\n", __func__, Start, NumberOfPages));
+     }
+  }
+
+  if (Start == 0x7DED0000) {
+    CoreReleaseLock (&mGcdMemorySpaceLock);
+    CoreDumpGcdMemorySpaceMap (FALSE);
+    CoreAcquireLock (&mGcdMemorySpaceLock);
   }
 
   return CoreConvertPages (Start, NumberOfPages, NewType);
@@ -1300,6 +1377,7 @@ GuardFreedPages (
   )
 {
   EFI_STATUS  Status;
+  // EFI_GCD_MEMORY_SPACE_DESCRIPTOR Descriptor;
 
   //
   // Legacy memory lower than 1MB might be accessed with no allocation. Leave
@@ -1309,34 +1387,65 @@ GuardFreedPages (
     return;
   }
 
+  
+  DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 75 GuardPage: 0x%llx GuardPageNumber: 0x%llx\n", BaseAddress, Pages));
+  // OSDDEBUG need to report this in the GCD, otherwise we could still allocate it as free memory?
+
   MarkFreedPages (BaseAddress, Pages);
-  if (gCpu != NULL) {
-    //
-    // Set flag to make sure allocating memory without GUARD for page table
-    // operation; otherwise infinite loops could be caused.
-    //
-    mOnGuarding = TRUE;
-    //
-    // Note: This might overwrite other attributes needed by other features,
-    // such as NX memory protection.
-    //
-    Status = gCpu->SetMemoryAttributes (
+
+  if (gCpu == NULL) {
+    // OSDDEBUG this gap needs to be closed with moving page table interfaces to GCD logic
+    return;
+  }
+
+  //
+  // Set flag to make sure allocating memory without GUARD for page table
+  // operation; otherwise infinite loops could be caused.
+  //
+  mOnGuarding = TRUE;
+
+  DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 307\n"));
+
+  // Status = CoreGetMemorySpaceDescriptor (BaseAddress, &Descriptor);
+  // if (EFI_ERROR (Status)) {
+  //   ASSERT_EFI_ERROR (Status);
+  //   mOnGuarding = FALSE;
+  //   return;
+  // }
+
+  // DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 308\n"));
+
+  // Status = CoreSetMemorySpaceCapabilities (BaseAddress, EFI_PAGES_TO_SIZE (Pages), Descriptor.Capabilities | EFI_MEMORY_RP);
+  // if (EFI_ERROR (Status)) { // OSDDEBUG we should be having XP set as a capability always
+  //   ASSERT_EFI_ERROR (Status);
+  //   mOnGuarding = FALSE;
+  //   return;
+  // }
+
+  DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 309\n"));
+
+  // Status = CoreSetMemorySpaceAttributes (
+  //                   BaseAddress,
+  //                   EFI_PAGES_TO_SIZE (Pages),
+  //                   EFI_MEMORY_RP
+  //                   );
+
+  Status = gCpu->SetMemoryAttributes (
                      gCpu,
                      BaseAddress,
                      EFI_PAGES_TO_SIZE (Pages),
                      EFI_MEMORY_RP
                      );
-    //
-    // Normally we should ASSERT the returned Status. But there might be memory
-    // alloc/free involved in SetMemoryAttributes(), which might fail this
-    // calling. It's rare case so it's OK to let a few tiny holes be not-guarded.
-    //
-    if (EFI_ERROR (Status)) {
-      DEBUG ((DEBUG_WARN, "Failed to guard freed pages: %p (%lu)\n", BaseAddress, (UINT64)Pages));
-    }
-
-    mOnGuarding = FALSE;
+  //
+  // Normally we should ASSERT the returned Status. But there might be memory
+  // alloc/free involved in SetMemoryAttributes(), which might fail this
+  // calling. It's rare case so it's OK to let a few tiny holes be not-guarded.
+  //
+  if (EFI_ERROR (Status)) {
+    DEBUG ((DEBUG_WARN, "Failed to guard freed pages: %p (%lu)\n", BaseAddress, (UINT64)Pages));
   }
+
+  mOnGuarding = FALSE;
 }
 
 /**
@@ -1380,6 +1489,8 @@ GuardAllFreedPages (
   UINT64  BitIndex;
   UINTN   GuardPageNumber;
 
+  DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 70 guarding all free pages\n"));
+
   if ((mGuardedMemoryMap == 0) ||
       (mMapLevel == 0) ||
       (mMapLevel > GUARDED_HEAP_MAP_TABLE_DEPTH))
@@ -1408,34 +1519,36 @@ GuardAllFreedPages (
       TableEntry = ((UINT64 *)(UINTN)(Tables[Level]))[Indices[Level]];
       Address    = Addresses[Level];
 
-      if (Level < GUARDED_HEAP_MAP_TABLE_DEPTH - 1) {
-        Level           += 1;
-        Tables[Level]    = TableEntry;
-        Addresses[Level] = Address;
-        Indices[Level]   = 0;
+      if (TableEntry != 0) {
+        if (Level < GUARDED_HEAP_MAP_TABLE_DEPTH - 1) {
+          Level           += 1;
+          Tables[Level]    = TableEntry;
+          Addresses[Level] = Address;
+          Indices[Level]   = 0;
 
-        continue;
-      } else {
-        BitIndex = 1;
-        while (BitIndex != 0) {
-          if ((TableEntry & BitIndex) != 0) {
-            if (GuardPage == (UINT64)-1) {
-              GuardPage = Address;
+          continue;
+        } else {
+          BitIndex = 1;
+          while (BitIndex != 0) {
+            if ((TableEntry & BitIndex) != 0) {
+              if (GuardPage == (UINT64)-1) {
+                GuardPage = Address;
+              }
+
+              ++GuardPageNumber;
+            } else if (GuardPageNumber > 0) {
+              GuardFreedPages (GuardPage, GuardPageNumber);
+              GuardPageNumber = 0;
+              GuardPage       = (UINT64)-1;
             }
 
-            ++GuardPageNumber;
-          } else if (GuardPageNumber > 0) {
-            GuardFreedPages (GuardPage, GuardPageNumber);
-            GuardPageNumber = 0;
-            GuardPage       = (UINT64)-1;
-          }
+            if (TableEntry == 0) {
+              break;
+            }
 
-          if (TableEntry == 0) {
-            break;
+            Address += EFI_PAGES_TO_SIZE (1);
+            BitIndex = LShiftU64 (BitIndex, 1);
           }
-
-          Address += EFI_PAGES_TO_SIZE (1);
-          BitIndex = LShiftU64 (BitIndex, 1);
         }
       }
     }
@@ -1457,6 +1570,8 @@ GuardAllFreedPages (
   if (Address != 0) {
     mLastPromotedPage = Address;
   }
+
+  DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 71 done guarding all free pages\n"));
 }
 
 /**
@@ -1534,10 +1649,13 @@ PromoteGuardedFreePages (
   UINTN                 AvailablePages;
   UINT64                Bitmap;
   EFI_PHYSICAL_ADDRESS  Start;
+  // EFI_GCD_MEMORY_SPACE_DESCRIPTOR Descriptor;
 
-  if (!IsHeapGuardEnabled (GUARD_HEAP_TYPE_FREED)) {
+  if (!IsHeapGuardEnabled (GUARD_HEAP_TYPE_FREED) || gCpu == NULL) {
     return FALSE;
   }
+
+  DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 600 %a\n", __func__));
 
   //
   // Similar to memory allocation service, always search the freed pages in
@@ -1574,16 +1692,29 @@ PromoteGuardedFreePages (
     DEBUG ((DEBUG_INFO, "Promoted pages: %lX (%lx)\r\n", Start, (UINT64)AvailablePages));
     ClearGuardedMemoryBits (Start, AvailablePages);
 
-    if (gCpu != NULL) {
-      //
-      // Set flag to make sure allocating memory without GUARD for page table
-      // operation; otherwise infinite loops could be caused.
-      //
-      mOnGuarding = TRUE;
-      Status      = gCpu->SetMemoryAttributes (gCpu, Start, EFI_PAGES_TO_SIZE (AvailablePages), 0);
-      ASSERT_EFI_ERROR (Status);
-      mOnGuarding = FALSE;
-    }
+    //
+    // Set flag to make sure allocating memory without GUARD for page table
+    // operation; otherwise infinite loops could be caused.
+    //
+    mOnGuarding = TRUE;
+    // Status = CoreGetMemorySpaceDescriptor (Start, &Descriptor);
+    // if (EFI_ERROR (Status)) {
+    //   ASSERT_EFI_ERROR (Status);
+    //   mOnGuarding = FALSE;
+    //   return;
+    // }
+
+    // Status = CoreSetMemorySpaceCapabilities (Start, Descriptor.Capabilities | Attributes);
+    // if (EFI_ERROR (Status)) { // OSDDEBUG we should do default mem protections here
+    //   ASSERT_EFI_ERROR (Status);
+    //   mOnGuarding = FALSE;
+    //   return;
+    // }
+    DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 310\n"));
+    // Status      = CoreSetMemorySpaceAttributes (Start, EFI_PAGES_TO_SIZE (AvailablePages), 0);
+    Status      = gCpu->SetMemoryAttributes (gCpu, Start, EFI_PAGES_TO_SIZE (AvailablePages), 0);
+    ASSERT_EFI_ERROR (Status);
+    mOnGuarding = FALSE;
 
     mLastPromotedPage = Start;
     *StartAddress     = Start;
@@ -1685,13 +1816,13 @@ DumpGuardedMemoryBitmap (
   Ruler2 = "FEDCBA9876543210FEDCBA9876543210FEDCBA9876543210FEDCBA9876543210";
 
   DEBUG ((
-    HEAP_GUARD_DEBUG_LEVEL,
+    DEBUG_VERBOSE,
     "============================="
     " Guarded Memory Bitmap "
     "==============================\r\n"
     ));
-  DEBUG ((HEAP_GUARD_DEBUG_LEVEL, "                  %a\r\n", Ruler1));
-  DEBUG ((HEAP_GUARD_DEBUG_LEVEL, "                  %a\r\n", Ruler2));
+  DEBUG ((DEBUG_VERBOSE, "                  %a\r\n", Ruler1));
+  DEBUG ((DEBUG_VERBOSE, "                  %a\r\n", Ruler2));
 
   CopyMem (Entries, mLevelMask, sizeof (Entries));
   CopyMem (Shifts, mLevelShift, sizeof (Shifts));
@@ -1712,7 +1843,7 @@ DumpGuardedMemoryBitmap (
       RepeatZero    = 0;
 
       DEBUG ((
-        HEAP_GUARD_DEBUG_LEVEL,
+        DEBUG_VERBOSE,
         "========================================="
         "=========================================\r\n"
         ));
@@ -1724,9 +1855,9 @@ DumpGuardedMemoryBitmap (
         if (Level == GUARDED_HEAP_MAP_TABLE_DEPTH - 1) {
           if (RepeatZero == 0) {
             Uint64ToBinString (TableEntry, String);
-            DEBUG ((HEAP_GUARD_DEBUG_LEVEL, "%016lx: %a\r\n", Address, String));
+            DEBUG ((DEBUG_VERBOSE, "%016lx: %a\r\n", Address, String));
           } else if (RepeatZero == 1) {
-            DEBUG ((HEAP_GUARD_DEBUG_LEVEL, "...             : ...\r\n"));
+            DEBUG ((DEBUG_VERBOSE, "...             : ...\r\n"));
           }
 
           RepeatZero += 1;
@@ -1742,7 +1873,7 @@ DumpGuardedMemoryBitmap (
       } else {
         RepeatZero = 0;
         Uint64ToBinString (TableEntry, String);
-        DEBUG ((HEAP_GUARD_DEBUG_LEVEL, "%016lx: %a\r\n", Address, String));
+        DEBUG ((DEBUG_VERBOSE, "%016lx: %a\r\n", Address, String));
       }
     }
 

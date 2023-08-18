@@ -244,6 +244,8 @@ DxeMain (
   EFI_VECTOR_HANDOFF_INFO       *VectorInfo;
   VOID                          *EntryPoint;
 
+  DEBUG ((DEBUG_ERROR, "OSDDEBUG 4\n"));
+
   //
   // Setup the default exception handlers
   //

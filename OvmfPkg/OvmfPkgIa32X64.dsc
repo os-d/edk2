@@ -1040,3 +1040,6 @@
   # TPM support
   #
 !include OvmfPkg/Include/Dsc/OvmfTpmComponentsDxe.dsc.inc
+
+[BuildOptions.common.EDKII.DXE_CORE,BuildOptions.common.EDKII.DXE_DRIVER,BuildOptions.common.EDKII.UEFI_DRIVER,BuildOptions.common.EDKII.UEFI_APPLICATION,BuildOptions.common.EDKII.MM_CORE_STANDALONE,BuildOptions.common.EDKII.MM_STANDALONE]
+  GCC:*_*_*_DLINK_FLAGS = -z common-page-size=0x1000
