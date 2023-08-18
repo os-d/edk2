@@ -111,6 +111,7 @@ READ_LOCK_STATUS   = TRUE
   INF ArmVirtPkg/MemoryProtectionInitPei/MemoryProtectionInitPei.inf
   INF ArmPkg/Drivers/CpuPei/CpuPei.inf
   INF MdeModulePkg/Core/DxeIplPeim/DxeIpl.inf
+  #INF MdeModulePkg/Universal/FvSimpleFileSystemDxe/FvSimpleFileSystemDxe.inf
 
 !if $(TPM2_ENABLE) == TRUE
   INF MdeModulePkg/Universal/PCD/Pei/Pcd.inf
@@ -118,6 +119,11 @@ READ_LOCK_STATUS   = TRUE
   INF OvmfPkg/Tcg/Tcg2Config/Tcg2ConfigPei.inf
   INF SecurityPkg/Tcg/Tcg2Pei/Tcg2Pei.inf
 !endif
+
+  #FILE APPLICATION=58ca116a-30ea-4e97-acac-908be5aff9ee {
+  #  SECTION PE32=$(OUTPUT_DIRECTORY)/$(TARGET)_$(TOOL_CHAIN_TAG)/AARCH64/DxePagingAuditTestApp.efi
+  #  SECTION UI= "PagingAudit"
+  #}
 
   FILE FV_IMAGE = 9E21FD93-9C72-4c15-8C4B-E77F1DB2D792 {
     SECTION GUIDED EE4E5898-3914-4259-9D6E-DC7BD79403CF PROCESSING_REQUIRED = TRUE {

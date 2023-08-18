@@ -306,9 +306,9 @@
   # ASSERT_BREAKPOINT_ENABLED  0x10
   # ASSERT_DEADLOOP_ENABLED    0x20
 !if $(TARGET) == RELEASE
-  gEfiMdePkgTokenSpaceGuid.PcdDebugPropertyMask|0x21
+  gEfiMdePkgTokenSpaceGuid.PcdDebugPropertyMask|0x02
 !else
-  gEfiMdePkgTokenSpaceGuid.PcdDebugPropertyMask|0x1f
+  gEfiMdePkgTokenSpaceGuid.PcdDebugPropertyMask|0x02
 !endif
 
   #  DEBUG_INIT      0x00000001  // Initialization

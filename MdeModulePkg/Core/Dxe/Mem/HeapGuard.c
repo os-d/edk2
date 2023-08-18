@@ -1788,13 +1788,13 @@ DumpGuardedMemoryBitmap (
   Ruler2 = "FEDCBA9876543210FEDCBA9876543210FEDCBA9876543210FEDCBA9876543210";
 
   DEBUG ((
-    DEBUG_ERROR,
+    DEBUG_VERBOSE,
     "============================="
     " Guarded Memory Bitmap "
     "==============================\r\n"
     ));
-  DEBUG ((DEBUG_ERROR, "                  %a\r\n", Ruler1));
-  DEBUG ((DEBUG_ERROR, "                  %a\r\n", Ruler2));
+  DEBUG ((DEBUG_VERBOSE, "                  %a\r\n", Ruler1));
+  DEBUG ((DEBUG_VERBOSE, "                  %a\r\n", Ruler2));
 
   CopyMem (Entries, mLevelMask, sizeof (Entries));
   CopyMem (Shifts, mLevelShift, sizeof (Shifts));
@@ -1815,7 +1815,7 @@ DumpGuardedMemoryBitmap (
       RepeatZero    = 0;
 
       DEBUG ((
-        DEBUG_ERROR,
+        DEBUG_VERBOSE,
         "========================================="
         "=========================================\r\n"
         ));
@@ -1827,9 +1827,9 @@ DumpGuardedMemoryBitmap (
         if (Level == GUARDED_HEAP_MAP_TABLE_DEPTH - 1) {
           if (RepeatZero == 0) {
             Uint64ToBinString (TableEntry, String);
-            DEBUG ((DEBUG_ERROR, "%016lx: %a\r\n", Address, String));
+            DEBUG ((DEBUG_VERBOSE, "%016lx: %a\r\n", Address, String));
           } else if (RepeatZero == 1) {
-            DEBUG ((DEBUG_ERROR, "...             : ...\r\n"));
+            DEBUG ((DEBUG_VERBOSE, "...             : ...\r\n"));
           }
 
           RepeatZero += 1;
@@ -1845,7 +1845,7 @@ DumpGuardedMemoryBitmap (
       } else {
         RepeatZero = 0;
         Uint64ToBinString (TableEntry, String);
-        DEBUG ((DEBUG_ERROR, "%016lx: %a\r\n", Address, String));
+        DEBUG ((DEBUG_VERBOSE, "%016lx: %a\r\n", Address, String));
       }
     }
 

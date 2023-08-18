@@ -43,7 +43,7 @@ STATIC MEMORY_PROTECTION_SETTINGS_PRIVATE  *mMpsp = NULL;
     .NonstopModeEnabled                     = FALSE    \
   },                                                  \
   { /* Image Protection */                            \
-    .ProtectImageFromUnknown                = TRUE,   \
+    .ProtectImageFromUnknown                = FALSE,   \
     .ProtectImageFromFv                     = TRUE    \
   },                                                  \
   { /* Execution Protection */                        \
@@ -69,7 +69,7 @@ STATIC MEMORY_PROTECTION_SETTINGS_PRIVATE  *mMpsp = NULL;
     }                                                 \
   },                                                  \
   { /* Heap Guard */                                  \
-    .PageGuardEnabled                       = TRUE,   \
+    .PageGuardEnabled                       = FALSE,   \
     .PoolGuardEnabled                       = TRUE,   \
     .FreedMemoryGuardEnabled                = FALSE,  \
     .NonstopModeEnabled                     = FALSE,   \

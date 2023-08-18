@@ -1777,8 +1777,8 @@ CoreSetMemorySpaceAttributes (
   )
 {
   // EFI_STATUS Status;
-  DEBUG ((DEBUG_ERROR, "GCD:SetMemorySpaceAttributes(Base=%016lx,Length=%016lx)\n", BaseAddress, Length));
-  DEBUG ((DEBUG_ERROR, "  Attributes  = %016lx\n", Attributes));
+  DEBUG ((DEBUG_GCD, "GCD:SetMemorySpaceAttributes(Base=%016lx,Length=%016lx)\n", BaseAddress, Length));
+  DEBUG ((DEBUG_GCD, "  Attributes  = %016lx\n", Attributes));
 
   // CoreAcquireGcdMemoryLock ();
   // Status = CoreConvertPagesEx (BaseAddress, Length, FALSE, 0, TRUE, Attributes, FALSE, 0);
@@ -1815,8 +1815,8 @@ CoreSetMemorySpaceCapabilities (
 {
   EFI_STATUS  Status;
 
-  DEBUG ((DEBUG_ERROR, "GCD:CoreSetMemorySpaceCapabilities(Base=%016lx,Length=%016lx)\n", BaseAddress, Length));
-  DEBUG ((DEBUG_ERROR, "  Capabilities  = %016lx\n", Capabilities));
+  DEBUG ((DEBUG_GCD, "GCD:CoreSetMemorySpaceCapabilities(Base=%016lx,Length=%016lx)\n", BaseAddress, Length));
+  DEBUG ((DEBUG_GCD, "  Capabilities  = %016lx\n", Capabilities));
 
   // OSDDEBUG, this needs to be able to split up descriptors if required, which is why I went to CoreConvertPagesEx, because it partially does that. It works for non-heapguard cases because the memory gets allocated first then attributes changed.
   // maybe simpler answer is getting heap guard a bit smarter
@@ -2675,7 +2675,7 @@ CoreInitializeGcdServices (
   EFI_PEI_HOB_POINTERS             Hob;
   VOID                             *NewHobList;
   EFI_HOB_HANDOFF_INFO_TABLE       *PhitHob;
-  UINT8                            SizeOfMemorySpace;
+  // UINT8                            SizeOfMemorySpace;
   UINT8                            SizeOfIoSpace;
   EFI_HOB_RESOURCE_DESCRIPTOR      *ResourceHob;
   EFI_PHYSICAL_ADDRESS             BaseAddress;
@@ -2706,7 +2706,7 @@ CoreInitializeGcdServices (
   //
   CpuHob = GetFirstHob (EFI_HOB_TYPE_CPU);
   ASSERT (CpuHob != NULL);
-  SizeOfMemorySpace = CpuHob->SizeOfMemorySpace;
+  // SizeOfMemorySpace = CpuHob->SizeOfMemorySpace;
   SizeOfIoSpace     = CpuHob->SizeOfIoSpace;
 
   //
