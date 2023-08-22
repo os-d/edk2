@@ -764,12 +764,14 @@ RefreshMemoryAttributesFromMtrr (
   //
   // Get the memory space map from GCD
   //
+  DEBUG ((DEBUG_ERROR, "OSDDEBUG 1021\n"));
   Status = gDS->GetMemorySpaceMap (
                   &NumberOfDescriptors,
                   &MemorySpaceMap
                   );
   ASSERT_EFI_ERROR (Status);
 
+  DEBUG ((DEBUG_ERROR, "OSDDEBUG 1022\n"));
   DefaultMemoryType = (UINT8)MtrrGetDefaultMemoryType ();
   DefaultAttributes = GetMemorySpaceAttributeFromMtrrType (DefaultMemoryType);
 
@@ -789,6 +791,8 @@ RefreshMemoryAttributesFromMtrr (
            );
   }
 
+  DEBUG ((DEBUG_ERROR, "OSDDEBUG 1023\n"));
+
   //
   // Go for variable MTRRs with WB attribute
   //
@@ -805,6 +809,8 @@ RefreshMemoryAttributesFromMtrr (
         );
     }
   }
+
+   DEBUG ((DEBUG_ERROR, "OSDDEBUG 1024\n"));
 
   //
   // Go for variable MTRRs with the attribute except for WB and UC attributes
@@ -825,6 +831,8 @@ RefreshMemoryAttributesFromMtrr (
     }
   }
 
+  DEBUG ((DEBUG_ERROR, "OSDDEBUG 1025\n"));
+
   //
   // Go for variable MTRRs with UC attribute
   //
@@ -841,6 +849,8 @@ RefreshMemoryAttributesFromMtrr (
         );
     }
   }
+
+  DEBUG ((DEBUG_ERROR, "OSDDEBUG 1026\n"));
 
   //
   // Go for fixed MTRRs
@@ -884,6 +894,8 @@ RefreshMemoryAttributesFromMtrr (
     }
   }
 
+  DEBUG ((DEBUG_ERROR, "OSDDEBUG 1027\n"));
+
   //
   // Handle the last fixed MTRR region
   //
@@ -895,12 +907,16 @@ RefreshMemoryAttributesFromMtrr (
     Attributes
     );
 
+  DEBUG ((DEBUG_ERROR, "OSDDEBUG 1028\n"));
+
   //
   // Free memory space map allocated by GCD service GetMemorySpaceMap ()
   //
   if (MemorySpaceMap != NULL) {
     FreePool (MemorySpaceMap);
   }
+
+  DEBUG ((DEBUG_ERROR, "OSDDEBUG 1029\n"));
 }
 
 /**
@@ -935,11 +951,15 @@ RefreshGcdMemoryAttributes (
   mIsFlushingGCD = TRUE;
 
   if (IsMtrrSupported ()) {
+    DEBUG ((DEBUG_ERROR, "OSDDEBUG 1020\n"));
     RefreshMemoryAttributesFromMtrr ();
+    DEBUG ((DEBUG_ERROR, "OSDDEBUG 1021\n"));
   }
 
   if (IsPagingAndPageAddressExtensionsEnabled ()) {
+    DEBUG ((DEBUG_ERROR, "OSDDEBUG 1022\n"));
     RefreshGcdMemoryAttributesFromPaging ();
+    DEBUG ((DEBUG_ERROR, "OSDDEBUG 1023\n"));
   }
 
   mIsFlushingGCD = FALSE;

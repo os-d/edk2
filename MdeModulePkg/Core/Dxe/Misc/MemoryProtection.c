@@ -232,7 +232,7 @@ SetUefiImageMemoryAttributes (
 
   // Status = CoreSetMemorySpaceCapabilities (BaseAddress, Length, Descriptor.Capabilities | FinalAttributes);
   // ASSERT_EFI_ERROR (Status);
-  Status = gCpu->SetMemoryAttributes (gCpu, BaseAddress, Length, FinalAttributes);
+  gCpu->SetMemoryAttributes (gCpu, BaseAddress, Length, FinalAttributes);
   DEBUG ((DEBUG_ERROR, "OSDDEBUG 1007\n"));
   // Status = CoreSetMemorySpaceAttributes (BaseAddress, Length, FinalAttributes);
   ASSERT_EFI_ERROR (Status); // OSDDEBUG probably need to set capabilities first?

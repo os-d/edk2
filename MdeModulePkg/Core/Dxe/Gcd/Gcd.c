@@ -166,8 +166,8 @@ CoreDumpGcdMemorySpaceMap (
   )
 {
   DEBUG_CODE_BEGIN ();
-  LIST_ENTRY                       *Link;
-  EFI_GCD_MAP_ENTRY                *Entry;
+  LIST_ENTRY         *Link;
+  EFI_GCD_MAP_ENTRY  *Entry;
 
   // if ((PcdGet32 (PcdDebugPrintErrorLevel) & DEBUG_GCD) == 0) {
   //   return;
@@ -175,25 +175,25 @@ CoreDumpGcdMemorySpaceMap (
 
   if (InitialMap) {
     DEBUG ((DEBUG_ERROR, "GCD:Initial GCD Memory Space Map\n"));
-  // }
+    // }
 
-  DEBUG ((DEBUG_ERROR, "GCDMemType EFIMemType Range                             Capabilities     Attributes       FromPages\n"));
-  DEBUG ((DEBUG_ERROR, "========== ========== ================================= ================ ================ =========\n"));
-  for (Link = mGcdMemorySpaceMap.ForwardLink; Link != &mGcdMemorySpaceMap; Link = Link->ForwardLink) {
-    Entry = CR (Link, EFI_GCD_MAP_ENTRY, Link, EFI_GCD_MAP_SIGNATURE);
-    DEBUG ((
-      DEBUG_ERROR,
-      "%a  %a  %016lx-%016lx %016lx %016lx%c %d\n",
-      mGcdMemoryTypeNames[MIN (Entry->GcdMemoryType, EfiGcdMemoryTypeMaximum)],
-      mEfiMemoryTypeNames[MIN (Entry->EfiMemoryType, EfiMaxMemoryType)],
-      Entry->BaseAddress,
-      Entry->EndAddress,
-      Entry->Capabilities,
-      Entry->Attributes,
-      Entry->ImageHandle == NULL ? ' ' : '*',
-      Entry->FromPages
-      ));
-  }
+    DEBUG ((DEBUG_ERROR, "GCDMemType EFIMemType Range                             Capabilities     Attributes       FromPages\n"));
+    DEBUG ((DEBUG_ERROR, "========== ========== ================================= ================ ================ =========\n"));
+    for (Link = mGcdMemorySpaceMap.ForwardLink; Link != &mGcdMemorySpaceMap; Link = Link->ForwardLink) {
+      Entry = CR (Link, EFI_GCD_MAP_ENTRY, Link, EFI_GCD_MAP_SIGNATURE);
+      DEBUG ((
+        DEBUG_ERROR,
+        "%a  %a  %016lx-%016lx %016lx %016lx%c %d\n",
+        mGcdMemoryTypeNames[MIN (Entry->GcdMemoryType, EfiGcdMemoryTypeMaximum)],
+        mEfiMemoryTypeNames[MIN (Entry->EfiMemoryType, EfiMaxMemoryType)],
+        Entry->BaseAddress,
+        Entry->EndAddress,
+        Entry->Capabilities,
+        Entry->Attributes,
+        Entry->ImageHandle == NULL ? ' ' : '*',
+        Entry->FromPages
+        ));
+    }
   }
 
   DEBUG ((DEBUG_ERROR, "\n"));
@@ -422,7 +422,7 @@ CoreAllocateGcdMapEntry (
   //
   mOnGuarding = TRUE;
   DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 320\n"));
-  *TopEntry   = AllocateZeroPool (sizeof (EFI_GCD_MAP_ENTRY));
+  *TopEntry = AllocateZeroPool (sizeof (EFI_GCD_MAP_ENTRY));
   DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 321\n"));
   mOnGuarding = FALSE;
   if (*TopEntry == NULL) {
@@ -430,11 +430,11 @@ CoreAllocateGcdMapEntry (
     return EFI_OUT_OF_RESOURCES;
   }
 
-  mOnGuarding  = TRUE;
+  mOnGuarding = TRUE;
   DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 322\n"));
   *BottomEntry = AllocateZeroPool (sizeof (EFI_GCD_MAP_ENTRY));
   DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 323\n"));
-  mOnGuarding  = FALSE;
+  mOnGuarding = FALSE;
   if (*BottomEntry == NULL) {
     DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 203 failing in bottom\n"));
     CoreFreePool (*TopEntry);
@@ -559,7 +559,8 @@ CoreMergeGcdMapEntry (
     return EFI_UNSUPPORTED;
   }
 
-  if (Entry->EfiMemoryType != AdjacentEntry->EfiMemoryType) {
+  // only merge efi conventional memory descriptors, allocated mem should be distinct
+  if ((Entry->EfiMemoryType != AdjacentEntry->EfiMemoryType)/* an idea I had that broke sbsa, revist when doing auditability && (Entry->EfiMemoryType != EfiConventionalMemory)*/) {
     return EFI_UNSUPPORTED;
   }
 
@@ -822,11 +823,11 @@ CoreConvertSpace (
     DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 236\n"));
     CoreAcquireGcdMemoryLock ();
     Lock = &mGcdMemorySpaceLock;
-    Map = &mGcdMemorySpaceMap;
+    Map  = &mGcdMemorySpaceMap;
   } else if ((Operation & GCD_IO_SPACE_OPERATION) != 0) {
     CoreAcquireGcdIoLock ();
     Lock = &mGcdIoSpaceLock;
-    Map = &mGcdIoSpaceMap;
+    Map  = &mGcdIoSpaceMap;
   } else {
     ASSERT (FALSE);
   }
@@ -836,7 +837,7 @@ CoreConvertSpace (
   //
   // Search for the list of descriptors that cover the range BaseAddress to BaseAddress+Length
   //
-  
+
   DEBUG ((DEBUG_ERROR, "OSDDEBUG 20 BaseAddress 0x%llx Length 0x%llx\n", BaseAddress, Length));
   Status = CoreSearchGcdMapEntry (BaseAddress, Length, &StartLink, &EndLink, Map);
   if (EFI_ERROR (Status)) {
@@ -1004,7 +1005,7 @@ CoreConvertSpace (
         Status = EFI_NOT_AVAILABLE_YET;
       } else {
         // the page table code can allocate pages, so we need to free the lock ahead of time
-        CoreReleaseLock(Lock);
+        CoreReleaseLock (Lock);
         Status = gCpu->SetMemoryAttributes (
                          gCpu,
                          BaseAddress,
@@ -1255,11 +1256,11 @@ CoreAllocateSpace (
     DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 232\n"));
     CoreAcquireGcdMemoryLock ();
     Lock = &mGcdMemorySpaceLock;
-    Map = &mGcdMemorySpaceMap;
+    Map  = &mGcdMemorySpaceMap;
   } else if ((Operation & GCD_IO_SPACE_OPERATION) != 0) {
     CoreAcquireGcdIoLock ();
     Lock = &mGcdIoSpaceLock;
-    Map = &mGcdIoSpaceMap;
+    Map  = &mGcdIoSpaceMap;
   } else {
     ASSERT (FALSE);
   }
@@ -1869,6 +1870,7 @@ CoreGetMemorySpaceMap (
   EFI_GCD_MAP_ENTRY                *Entry;
   EFI_GCD_MEMORY_SPACE_DESCRIPTOR  *Descriptor;
   UINTN                            DescriptorCount;
+  UINTN                            ActualDescriptorCount;
 
   //
   // Make sure parameters are valid
@@ -1888,18 +1890,27 @@ CoreGetMemorySpaceMap (
   //
   // Take the lock, for entering the loop with the lock held.
   //
-  DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 234 mOnGuarding %d\n", mOnGuarding));
+  DEBUG ((DEBUG_ERROR, "OSDDEBUG 234 mOnGuarding %d\n", mOnGuarding));
   CoreAcquireGcdMemoryLock ();
   while (TRUE) {
     //
     // Count descriptors. It might be done more than once because the
     // AllocatePool() called below has to be running outside the GCD lock.
     //
+    // We could end up in a situation where we are gaining and losing descriptors because of the allocate/free pool
+    // calls, so we should accept any buffer size that is greater than or equal to the descriptor count we have.
+    //
     DescriptorCount = CoreCountGcdMapEntry (&mGcdMemorySpaceMap);
-    if ((DescriptorCount == *NumberOfDescriptors) && (*MemorySpaceMap != NULL)) {
+    DEBUG ((DEBUG_ERROR, "OSDDEBUG 2350 Descriptor Count %u\n", DescriptorCount));
+    // CoreDumpGcdMemorySpaceMap (TRUE);
+    DEBUG ((DEBUG_ERROR, "OSDDEBUG 2351 Descriptor Count %u\n", DescriptorCount));
+    if ((DescriptorCount <= *NumberOfDescriptors) && (*MemorySpaceMap != NULL)) {
       //
       // Fill in the MemorySpaceMap if no memory space map change.
+      // Ensure the caller has the correct number of filled in descriptors, we may have allocated more space than
+      // we have descriptors to avoid an infinite loop.
       //
+      *NumberOfDescriptors = DescriptorCount;
       Descriptor = *MemorySpaceMap;
       Link       = mGcdMemorySpaceMap.ForwardLink;
       while (Link != &mGcdMemorySpaceMap) {
@@ -1917,7 +1928,7 @@ CoreGetMemorySpaceMap (
 
     //
     // Release the lock before memory allocation, because it might cause
-    // GCD lock conflict in one of calling path in AllocatPool().
+    // GCD lock conflict in one of calling path in AllocatePool().
     //
     CoreReleaseGcdMemoryLock ();
 
@@ -1930,10 +1941,20 @@ CoreGetMemorySpaceMap (
       FreePool (*MemorySpaceMap);
     }
 
+    ActualDescriptorCount = CoreCountGcdMapEntry (&mGcdMemorySpaceMap);
+
+    DEBUG ((DEBUG_ERROR, "OSDDEBUG 2352 Descriptor Count %u\n", ActualDescriptorCount));
+    // CoreDumpGcdMemorySpaceMap (TRUE);
+    DEBUG ((DEBUG_ERROR, "OSDDEBUG 2353 Descriptor Count %u\n", DescriptorCount));
+
     *MemorySpaceMap = AllocatePool (
                         DescriptorCount *
                         sizeof (EFI_GCD_MEMORY_SPACE_DESCRIPTOR)
                         );
+    ActualDescriptorCount = CoreCountGcdMapEntry (&mGcdMemorySpaceMap);
+    DEBUG ((DEBUG_ERROR, "OSDDEBUG 2354 Descriptor Count %u *MemorySpaceMap: 0x%llx\n", ActualDescriptorCount, (UINT64)*MemorySpaceMap));
+    // CoreDumpGcdMemorySpaceMap (TRUE);
+    DEBUG ((DEBUG_ERROR, "OSDDEBUG 2355 Descriptor Count %u\n", DescriptorCount));
     if (*MemorySpaceMap == NULL) {
       *NumberOfDescriptors = 0;
       return EFI_OUT_OF_RESOURCES;
@@ -1947,7 +1968,7 @@ CoreGetMemorySpaceMap (
     //
     // Re-acquire the lock, for the next iteration.
     //
-    DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 235\n"));
+    DEBUG ((DEBUG_ERROR, "OSDDEBUG 235 Descriptor Count %u\n", DescriptorCount));
     CoreAcquireGcdMemoryLock ();
   }
 
@@ -2614,7 +2635,7 @@ CoreInitializeMemoryServices (
     EfiGcdMemoryTypeSystemMemory,
     BaseAddress,
     RShiftU64 (Length, EFI_PAGE_SHIFT),
-    0,//Capabilities, OSDDEBUG let's get the attributes from the resource descriptor hobs, too? They should have them
+    Capabilities,// OSDDEBUG let's get the attributes from the resource descriptor hobs, too? They should have them
     Capabilities,
     gDxeCoreImageHandle
     );
@@ -2632,8 +2653,8 @@ CoreInitializeMemoryServices (
     EfiGcdMemoryTypeNonExistent,
     0,
     BaseAddress / EFI_PAGE_SIZE, // number of pages until the original allocation
-    0, // Capabilities, OSDDEBUG can't use attributes from resource descriptor hobs
-    Capabilities, // OSDDEBUG should be setting capabilities from the get go
+    Capabilities,                // OSDDEBUG can't use attributes from resource descriptor hobs
+    Capabilities,                // OSDDEBUG should be setting capabilities from the get go
     NULL
     );
 
@@ -2645,19 +2666,19 @@ CoreInitializeMemoryServices (
   ASSERT (CpuHob != NULL);
   SizeOfMemorySpace = CpuHob->SizeOfMemorySpace;
 
-   CoreAddMemoryDescriptor (
+  CoreAddMemoryDescriptor (
     EfiConventionalMemory,
     EfiGcdMemoryTypeNonExistent,
     BaseAddress + Length,
     ((LShiftU64 (1, SizeOfMemorySpace) - 1) - BaseAddress + Length) / EFI_PAGE_SIZE, // OSDDEBUG # of pages, which is from end of original descriptor to end of mem, divided by page size
-    0, //Capabilities, OSDDEBUG can't use attributes from resource descriptor hobs
+    Capabilities, //OSDDEBUG can't use attributes from resource descriptor hobs
     Capabilities,
     NULL
     );
 
   CoreDumpGcdMemorySpaceMap (TRUE);
 
-    DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 32\n"));
+  DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 32\n"));
 
   return EFI_SUCCESS;
 }
@@ -2683,9 +2704,9 @@ CoreInitializeGcdServices (
   IN UINT64                MemoryLength
   )
 {
-  EFI_PEI_HOB_POINTERS             Hob;
-  VOID                             *NewHobList;
-  EFI_HOB_HANDOFF_INFO_TABLE       *PhitHob;
+  EFI_PEI_HOB_POINTERS        Hob;
+  VOID                        *NewHobList;
+  EFI_HOB_HANDOFF_INFO_TABLE  *PhitHob;
   // UINT8                            SizeOfMemorySpace;
   UINT8                            SizeOfIoSpace;
   EFI_HOB_RESOURCE_DESCRIPTOR      *ResourceHob;
@@ -2718,11 +2739,12 @@ CoreInitializeGcdServices (
   CpuHob = GetFirstHob (EFI_HOB_TYPE_CPU);
   ASSERT (CpuHob != NULL);
   // SizeOfMemorySpace = CpuHob->SizeOfMemorySpace;
-  SizeOfIoSpace     = CpuHob->SizeOfIoSpace;
+  SizeOfIoSpace = CpuHob->SizeOfIoSpace;
 
   //
   // Initialize the GCD Memory Space Map
   //
+
   /*Entry = AllocateCopyPool (sizeof (EFI_GCD_MAP_ENTRY), &mGcdMemorySpaceMapEntryTemplate);
   ASSERT (Entry != NULL);
 
@@ -2818,7 +2840,7 @@ CoreInitializeGcdServices (
         Status = CoreInternalAddMemorySpace (
                    GcdMemoryType,
                    ResourceHob->PhysicalStart,
-                   0x48000000 - ResourceHob->PhysicalStart,//ResourceHob->ResourceLength, OSDDEBUG need to consider adding all mem at once, etc., but multiple HOBs
+                   0x48000000 - ResourceHob->PhysicalStart,// ResourceHob->ResourceLength, OSDDEBUG need to consider adding all mem at once, etc., but multiple HOBs
                    Capabilities
                    );
       }
@@ -2846,6 +2868,7 @@ CoreInitializeGcdServices (
       (Descriptor.GcdMemoryType == EfiGcdMemoryTypeSystemMemory) ||
       (Descriptor.GcdMemoryType == EfiGcdMemoryTypeMoreReliable)
       );
+
     /*Status = CoreAllocateMemorySpace (
                EfiGcdAllocateAddress,
                Descriptor.GcdMemoryType,
@@ -2854,7 +2877,7 @@ CoreInitializeGcdServices (
                &MemoryBaseAddress,
                gDxeCoreImageHandle,
                NULL
-               ); */ // OSDDEBUG I think issue here may be twofold. Try using CoreAddMemoryDescriptor instead, see how it does. This may be putting DxeCore where page allocation code is? But maybe this is just marking it safe,I guess.
+               ); */// OSDDEBUG I think issue here may be twofold. Try using CoreAddMemoryDescriptor instead, see how it does. This may be putting DxeCore where page allocation code is? But maybe this is just marking it safe,I guess.
   }
 
   DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 12\n"));
@@ -2882,25 +2905,26 @@ CoreInitializeGcdServices (
             ((Descriptor.GcdMemoryType == EfiGcdMemoryTypeSystemMemory) ||
              (Descriptor.GcdMemoryType == EfiGcdMemoryTypeMoreReliable)))
         {*/
-          // CoreAddMemoryDescriptor ( // OSDDEBUG, this needs merging logic, I guess, since it is trying to allocate ranges. Maybe instead of add memory descriptor, it should be allocate at address
-          //   MemoryHob->AllocDescriptor.MemoryType != EfiConventionalMemory ? MemoryHob->AllocDescriptor.MemoryType : EfiReservedMemoryType,
-          //   Descriptor.GcdMemoryType,
-          //   MemoryHob->AllocDescriptor.MemoryBaseAddress,
-          //   RShiftU64 (MemoryHob->AllocDescriptor.MemoryLength, EFI_PAGE_SHIFT),
-          //   Descriptor.Capabilities & (~EFI_MEMORY_RUNTIME),
-          //   Descriptor.Capabilities,
-          //   gDxeCoreImageHandle
-          //   );
-          // OSDDEBUG we have two HOBs that are duplicates, seems to be common for DXECore and Stack HOBs, so we will see two failed allocations, which is ok
-          DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 451 %a AllocateAddress 0x%llx Length 0x%llx\n", __func__, MemoryHob->AllocDescriptor.MemoryBaseAddress, MemoryHob->AllocDescriptor.MemoryLength));
-          CoreAllocatePages ( // We are allocating pages here because these are already allocated ranges and they should exist in the GCD already
-            AllocateAddress,
-            MemoryHob->AllocDescriptor.MemoryType != EfiConventionalMemory ? MemoryHob->AllocDescriptor.MemoryType : EfiReservedMemoryType,
-            RShiftU64 (MemoryHob->AllocDescriptor.MemoryLength, EFI_PAGE_SHIFT),
-            &MemoryHob->AllocDescriptor.MemoryBaseAddress
-            // OSDDEBUG add image handle here, probs
+        // CoreAddMemoryDescriptor ( // OSDDEBUG, this needs merging logic, I guess, since it is trying to allocate ranges. Maybe instead of add memory descriptor, it should be allocate at address
+        //   MemoryHob->AllocDescriptor.MemoryType != EfiConventionalMemory ? MemoryHob->AllocDescriptor.MemoryType : EfiReservedMemoryType,
+        //   Descriptor.GcdMemoryType,
+        //   MemoryHob->AllocDescriptor.MemoryBaseAddress,
+        //   RShiftU64 (MemoryHob->AllocDescriptor.MemoryLength, EFI_PAGE_SHIFT),
+        //   Descriptor.Capabilities & (~EFI_MEMORY_RUNTIME),
+        //   Descriptor.Capabilities,
+        //   gDxeCoreImageHandle
+        //   );
+        // OSDDEBUG we have two HOBs that are duplicates, seems to be common for DXECore and Stack HOBs, so we will see two failed allocations, which is ok
+        DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 451 %a AllocateAddress 0x%llx Length 0x%llx\n", __func__, MemoryHob->AllocDescriptor.MemoryBaseAddress, MemoryHob->AllocDescriptor.MemoryLength));
+        CoreAllocatePages (
+          // We are allocating pages here because these are already allocated ranges and they should exist in the GCD already
+          AllocateAddress,
+          MemoryHob->AllocDescriptor.MemoryType != EfiConventionalMemory ? MemoryHob->AllocDescriptor.MemoryType : EfiReservedMemoryType,
+          RShiftU64 (MemoryHob->AllocDescriptor.MemoryLength, EFI_PAGE_SHIFT),
+          &MemoryHob->AllocDescriptor.MemoryBaseAddress
+          // OSDDEBUG add image handle here, probs
           );
-        //}
+        // }
       }
     }
 
@@ -2920,32 +2944,33 @@ CoreInitializeGcdServices (
       //                       gDxeCoreImageHandle,
       //                       NULL
       //                       );
-      Status      = CoreGetMemorySpaceDescriptor (BaseAddress, &Descriptor);
+      Status = CoreGetMemorySpaceDescriptor (BaseAddress, &Descriptor);
       if (!EFI_ERROR (Status)) {
-      // CoreAddMemoryDescriptor (
-      //       EfiMemoryMappedIO,
-      //       EfiGcdMemoryTypeMemoryMappedIo,
-      //       BaseAddress,
-      //       FirmwareVolumeHob->Length,
-      //       Descriptor.Capabilities & (~EFI_MEMORY_RUNTIME),
-      //       Descriptor.Capabilities,
-      //       gDxeCoreImageHandle
-      //       );
-      CoreAllocatePages ( // OSDDEBUG need to adjust gcd info, like mem type
-        AllocateAddress,
-        EfiMemoryMappedIO,
-        RShiftU64 (FirmwareVolumeHob->BaseAddress, EFI_PAGE_SHIFT),
-        &BaseAddress        
-      );
+        // CoreAddMemoryDescriptor (
+        //       EfiMemoryMappedIO,
+        //       EfiGcdMemoryTypeMemoryMappedIo,
+        //       BaseAddress,
+        //       FirmwareVolumeHob->Length,
+        //       Descriptor.Capabilities & (~EFI_MEMORY_RUNTIME),
+        //       Descriptor.Capabilities,
+        //       gDxeCoreImageHandle
+        //       );
+        CoreAllocatePages (
+          // OSDDEBUG need to adjust gcd info, like mem type
+          AllocateAddress,
+          EfiMemoryMappedIO,
+          RShiftU64 (FirmwareVolumeHob->BaseAddress, EFI_PAGE_SHIFT),
+          &BaseAddress
+          );
       }
     }
   }
 
   DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 14\n"));
 
-   DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 111\n"));
+  DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 111\n"));
 
-  CoreDumpGcdMemorySpaceMap (FALSE);     
+  CoreDumpGcdMemorySpaceMap (FALSE);
 
   //
   // Add and allocate the remaining unallocated system memory to the memory services.
