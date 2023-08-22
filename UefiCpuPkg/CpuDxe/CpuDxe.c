@@ -419,6 +419,7 @@ CpuSetMemoryAttributes (
 
   if (CacheAttributes != 0) {
     if (!IsMtrrSupported ()) {
+      DEBUG ((DEBUG_ERROR, "OSDDEBUG 4 Mtrr not supported\n"));
       return EFI_UNSUPPORTED;
     }
 
@@ -448,6 +449,7 @@ CpuSetMemoryAttributes (
     }
 
     CurrentCacheType = MtrrGetMemoryAttribute (BaseAddress);
+    DEBUG ((DEBUG_ERROR, "OSDDEBUG 10 Mtrr current cache type: 0x%llx cachetype: 0x%llx\n", CurrentCacheType, CacheType));
     if (CurrentCacheType != CacheType) {
       //
       // call MTRR library function
@@ -480,9 +482,12 @@ CpuSetMemoryAttributes (
                                   );
           ASSERT (MpStatus == EFI_SUCCESS || MpStatus == EFI_NOT_STARTED);
         }
+      } else {
+        DEBUG ((DEBUG_ERROR, "OSDDEBUG 7 failed\n"));
       }
 
       if (EFI_ERROR (Status)) {
+        DEBUG ((DEBUG_ERROR, "OSDDEBUG 5 intermediate failure\n"));
         return Status;
       }
     }
@@ -491,7 +496,12 @@ CpuSetMemoryAttributes (
   //
   // Set memory attribute by page table
   //
-  return AssignMemoryPageAttributes (NULL, BaseAddress, Length, MemoryAttributes, NULL);
+  Status =  AssignMemoryPageAttributes (NULL, BaseAddress, Length, MemoryAttributes, NULL);
+
+  if (EFI_ERROR (Status)) {
+    DEBUG ((DEBUG_ERROR, "OSDDEBUG 6 final error\n"));
+  }
+  return Status;
 }
 
 /**
@@ -767,9 +777,9 @@ RefreshMemoryAttributesFromMtrr (
   // Set default attributes to all spaces.
   //
   for (Index = 0; Index < NumberOfDescriptors; Index++) {
-    if (MemorySpaceMap[Index].GcdMemoryType == EfiGcdMemoryTypeNonExistent) {
-      continue;
-    }
+    // if (MemorySpaceMap[Index].GcdMemoryType == EfiGcdMemoryTypeNonExistent) {
+    //   continue;
+    // }
 
     gDS->SetMemorySpaceAttributes (
            MemorySpaceMap[Index].BaseAddress,

@@ -321,7 +321,7 @@ CoreAllocatePoolPagesI (
   ASSERT_LOCKED (&mPoolMemoryLock);
   CoreReleaseLock (&mPoolMemoryLock);
 
-  DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 230\n"));
+  DEBUG ((DEBUG_ERROR, "OSDDEBUG 230 acquiring lock\n"));
   Status = CoreAcquireLockOrFail (&mGcdMemorySpaceLock);
   if (EFI_ERROR (Status)) {
     DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 210 failed to release gcd lock\n"));

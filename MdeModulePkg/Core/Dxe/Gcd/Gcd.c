@@ -169,13 +169,13 @@ CoreDumpGcdMemorySpaceMap (
   LIST_ENTRY                       *Link;
   EFI_GCD_MAP_ENTRY                *Entry;
 
-  if ((PcdGet32 (PcdDebugPrintErrorLevel) & DEBUG_GCD) == 0) {
-    return;
-  }
+  // if ((PcdGet32 (PcdDebugPrintErrorLevel) & DEBUG_GCD) == 0) {
+  //   return;
+  // }
 
   if (InitialMap) {
-    DEBUG ((DEBUG_GCD, "GCD:Initial GCD Memory Space Map\n"));
-  }
+    DEBUG ((DEBUG_ERROR, "GCD:Initial GCD Memory Space Map\n"));
+  // }
 
   DEBUG ((DEBUG_ERROR, "GCDMemType EFIMemType Range                             Capabilities     Attributes       FromPages\n"));
   DEBUG ((DEBUG_ERROR, "========== ========== ================================= ================ ================ =========\n"));
@@ -194,8 +194,9 @@ CoreDumpGcdMemorySpaceMap (
       Entry->FromPages
       ));
   }
+  }
 
-  DEBUG ((DEBUG_GCD, "\n"));
+  DEBUG ((DEBUG_ERROR, "\n"));
   DEBUG_CODE_END ();
 }
 
@@ -288,7 +289,7 @@ CoreAcquireGcdMemoryLock (
   VOID
   )
 {
-  DEBUG ((DEBUG_VERBOSE, "GcdLockAcquired\n"));
+  DEBUG ((DEBUG_ERROR, "GcdLockAcquired\n"));
   CoreAcquireLock (&mGcdMemorySpaceLock);
 }
 
@@ -301,7 +302,7 @@ CoreReleaseGcdMemoryLock (
   VOID
   )
 {
-  DEBUG ((DEBUG_VERBOSE, "GcdLockReleased\n"));
+  DEBUG ((DEBUG_ERROR, "GcdLockReleased\n"));
   CoreReleaseLock (&mGcdMemorySpaceLock);
 }
 
@@ -469,7 +470,11 @@ CoreInsertGcdMapEntry (
 {
   ASSERT (Length != 0);
 
-  DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 336 BaseAddress 0x%llx Entry->BaseAddress 0x%llx Entry->EndAddress 0x%llx TopEntry->BaseAddress 0x%llx TopEntry->EndAddress 0x%llx BottomEntry->BaseAddress 0x%llx BottomEntry->EndAddress 0x%llx\n", BaseAddress, Entry->BaseAddress, Entry->EndAddress, TopEntry->BaseAddress, TopEntry->EndAddress, BottomEntry->BaseAddress, BottomEntry->EndAddress));
+  DEBUG ((DEBUG_ERROR, "OSDDEBUG 336 BaseAddress 0x%llx Entry->BaseAddress 0x%llx Entry->EndAddress 0x%llx TopEntry->BaseAddress 0x%llx TopEntry->EndAddress 0x%llx BottomEntry->BaseAddress 0x%llx BottomEntry->EndAddress 0x%llx\n", BaseAddress, Entry->BaseAddress, Entry->EndAddress, TopEntry->BaseAddress, TopEntry->EndAddress, BottomEntry->BaseAddress, BottomEntry->EndAddress));
+
+  if ((UINT64)BaseAddress == 0x0) {
+    CoreDumpGcdMemorySpaceMap (TRUE);
+  }
 
   if (BaseAddress > Entry->BaseAddress) {
     ASSERT (BottomEntry->Signature == 0);
@@ -478,7 +483,7 @@ CoreInsertGcdMapEntry (
     Entry->BaseAddress      = BaseAddress;
     BottomEntry->EndAddress = BaseAddress - 1;
     InsertTailList (Link, &BottomEntry->Link);
-    DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 337 BaseAddress 0x%llx Entry->BaseAddress 0x%llx BottomEntry->EndAddress 0x%llx &BottomEntry->Link 0x%llx\n", BaseAddress, Entry->BaseAddress, BottomEntry->EndAddress, &BottomEntry->Link));
+    DEBUG ((DEBUG_ERROR, "OSDDEBUG 337 BaseAddress 0x%llx Entry->BaseAddress 0x%llx BottomEntry->EndAddress 0x%llx &BottomEntry->Link 0x%llx\n", BaseAddress, Entry->BaseAddress, BottomEntry->EndAddress, &BottomEntry->Link));
   }
 
   if ((BaseAddress + Length - 1) < Entry->EndAddress) {
@@ -488,10 +493,14 @@ CoreInsertGcdMapEntry (
     TopEntry->BaseAddress = BaseAddress + Length;
     Entry->EndAddress     = BaseAddress + Length - 1;
     InsertHeadList (Link, &TopEntry->Link);
-    DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 338 BaseAddress 0x%llx Entry->EndAddress 0x%llx TopEntry->BaseAddress 0x%llx &TopEntry->Link 0x%llx\n", BaseAddress, Entry->EndAddress, TopEntry->BaseAddress, &TopEntry->Link));
+    DEBUG ((DEBUG_ERROR, "OSDDEBUG 338 BaseAddress 0x%llx Entry->EndAddress 0x%llx TopEntry->BaseAddress 0x%llx &TopEntry->Link 0x%llx\n", BaseAddress, Entry->EndAddress, TopEntry->BaseAddress, &TopEntry->Link));
   }
 
-  DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 339 BaseAddress 0x%llx Entry->BaseAddress 0x%llx Entry->EndAddress 0x%llx TopEntry->BaseAddress 0x%llx TopEntry->EndAddress 0x%llx BottomEntry->BaseAddress 0x%llx BottomEntry->EndAddress 0x%llx\n", BaseAddress, Entry->BaseAddress, Entry->EndAddress, TopEntry->BaseAddress, TopEntry->EndAddress, BottomEntry->BaseAddress, BottomEntry->EndAddress));
+  DEBUG ((DEBUG_ERROR, "OSDDEBUG 339 BaseAddress 0x%llx Entry->BaseAddress 0x%llx Entry->EndAddress 0x%llx TopEntry->BaseAddress 0x%llx TopEntry->EndAddress 0x%llx BottomEntry->BaseAddress 0x%llx BottomEntry->EndAddress 0x%llx\n", BaseAddress, Entry->BaseAddress, Entry->EndAddress, TopEntry->BaseAddress, TopEntry->EndAddress, BottomEntry->BaseAddress, BottomEntry->EndAddress));
+
+  if ((UINT64)BaseAddress == 0x0) {
+    CoreDumpGcdMemorySpaceMap (TRUE);
+  }
 
   return EFI_SUCCESS;
 }
@@ -828,7 +837,7 @@ CoreConvertSpace (
   // Search for the list of descriptors that cover the range BaseAddress to BaseAddress+Length
   //
   
-  DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 20 BaseAddress 0x%llx Length 0x%llx\n", BaseAddress, Length));
+  DEBUG ((DEBUG_ERROR, "OSDDEBUG 20 BaseAddress 0x%llx Length 0x%llx\n", BaseAddress, Length));
   Status = CoreSearchGcdMapEntry (BaseAddress, Length, &StartLink, &EndLink, Map);
   if (EFI_ERROR (Status)) {
     Status = EFI_UNSUPPORTED;
@@ -930,7 +939,7 @@ CoreConvertSpace (
       case GCD_SET_CAPABILITIES_MEMORY_OPERATION:
         if (((BaseAddress & EFI_PAGE_MASK) != 0) || ((Length & EFI_PAGE_MASK) != 0)) {
           Status = EFI_INVALID_PARAMETER;
-          DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 200 BaseAddress 0x%llx Length 0x%llx\n", BaseAddress, Length));
+          DEBUG ((DEBUG_ERROR, "OSDDEBUG 200 BaseAddress 0x%llx Length 0x%llx\n", BaseAddress, Length));
 
           goto Done;
         }
@@ -939,7 +948,7 @@ CoreConvertSpace (
         // Current attributes must still be supported with new capabilities
         //
         if ((Capabilities & Entry->Attributes) != Entry->Attributes) {
-          DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 22\n"));
+          DEBUG ((DEBUG_ERROR, "OSDDEBUG 22\n"));
           Status = EFI_UNSUPPORTED;
           goto Done;
         }
@@ -1007,7 +1016,7 @@ CoreConvertSpace (
 
       if (EFI_ERROR (Status)) {
         // Freeing the pool can free pages, which grabs the gcd lock, so release it first
-        DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 331\n"));
+        DEBUG ((DEBUG_ERROR, "OSDDEBUG 331 Status %r\n", Status));
         CoreReleaseLock (Lock);
         CoreFreePool (TopEntry);
         CoreFreePool (BottomEntry);
@@ -1023,9 +1032,9 @@ CoreConvertSpace (
   Link = StartLink;
   while (Link != EndLink->ForwardLink) {
     Entry = CR (Link, EFI_GCD_MAP_ENTRY, Link, EFI_GCD_MAP_SIGNATURE);
-    DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 361 GCD entry count %llu\n", CoreCountGcdMapEntry (&mGcdMemorySpaceMap)));
+    DEBUG ((DEBUG_ERROR, "OSDDEBUG 361 GCD entry count %llu\n", CoreCountGcdMapEntry (&mGcdMemorySpaceMap)));
     CoreInsertGcdMapEntry (Link, Entry, BaseAddress, Length, TopEntry, BottomEntry);
-    DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 362 GCD entry count %llu\n", CoreCountGcdMapEntry (&mGcdMemorySpaceMap)));
+    DEBUG ((DEBUG_ERROR, "OSDDEBUG 362 GCD entry count %llu\n", CoreCountGcdMapEntry (&mGcdMemorySpaceMap)));
     switch (Operation) {
       //
       // Add operations
@@ -1078,7 +1087,7 @@ CoreConvertSpace (
       // Set capabilities operation
       //
       case GCD_SET_CAPABILITIES_MEMORY_OPERATION:
-        DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 335 Entry->BaseAddress 0x%llx Entry->EndAddress 0x%llx Capabilities 0x%llx\n", Entry->BaseAddress, Entry->EndAddress, Capabilities));
+        DEBUG ((DEBUG_ERROR, "OSDDEBUG 335 Entry->BaseAddress 0x%llx Entry->EndAddress 0x%llx Capabilities 0x%llx\n", Entry->BaseAddress, Entry->EndAddress, Capabilities));
         Entry->Capabilities = Capabilities;
         break;
     }
@@ -1090,7 +1099,7 @@ CoreConvertSpace (
   // Cleanup
   //
   Status = CoreCleanupGcdMapEntry (TopEntry, BottomEntry, StartLink, EndLink, Map, Lock);
-  DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 363 GCD entry count %llu\n", CoreCountGcdMapEntry (&mGcdMemorySpaceMap)));
+  DEBUG ((DEBUG_ERROR, "OSDDEBUG 363 GCD entry count %llu\n", CoreCountGcdMapEntry (&mGcdMemorySpaceMap)));
   if (EFI_ERROR (Status)) {
     DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 201 Cleanup failed\n"));
   }

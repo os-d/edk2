@@ -998,9 +998,9 @@ RefreshGcdMemoryAttributesFromPaging (
   }
 
   for (Index = 0; Index < NumberOfDescriptors; Index++) {
-    if (MemorySpaceMap[Index].GcdMemoryType == EfiGcdMemoryTypeNonExistent) {
-      continue;
-    }
+    // if (MemorySpaceMap[Index].GcdMemoryType == EfiGcdMemoryTypeNonExistent) {
+    //   continue;
+    // }
 
     //
     // Sync the actual paging related capabilities back to GCD service first.
@@ -1070,6 +1070,9 @@ RefreshGcdMemoryAttributesFromPaging (
       {
         NewAttributes = (MemorySpaceMap[Index].Attributes &
                          ~EFI_MEMORY_ATTRIBUTE_MASK) | Attributes;
+        if (BaseAddress == 0x0) {
+          DEBUG ((DEBUG_ERROR, "OSDDEBUG 1000 Attributes: 0x%llx\n", Attributes));
+        }
         Status = gDS->SetMemorySpaceAttributes (
                         BaseAddress,
                         Length,
@@ -1077,7 +1080,7 @@ RefreshGcdMemoryAttributesFromPaging (
                         );
         ASSERT_EFI_ERROR (Status);
         DEBUG ((
-          DEBUG_VERBOSE,
+          DEBUG_ERROR,
           "Updated memory space attribute: [%lu] %016lx - %016lx (%016lx -> %016lx)\r\n",
           (UINT64)Index,
           BaseAddress,

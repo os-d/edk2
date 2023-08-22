@@ -1171,6 +1171,8 @@ DisableNullDetectionAtTheEndOfDxe (
     ASSERT_EFI_ERROR (Status);
   }
 
+  DEBUG ((DEBUG_ERROR, "OSDDEBUG 3 Attempting attributes 0x%llx\n", Desc.Attributes & ~EFI_MEMORY_RP));
+
   Status = CoreSetMemorySpaceAttributes (
              0,
              EFI_PAGE_SIZE,
