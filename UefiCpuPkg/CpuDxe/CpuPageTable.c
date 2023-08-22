@@ -998,9 +998,9 @@ RefreshGcdMemoryAttributesFromPaging (
   }
 
   for (Index = 0; Index < NumberOfDescriptors; Index++) {
-    // if (MemorySpaceMap[Index].GcdMemoryType == EfiGcdMemoryTypeNonExistent) {
-    //   continue;
-    // }
+    if (MemorySpaceMap[Index].GcdMemoryType == EfiGcdMemoryTypeNonExistent) {
+      continue;
+    }
 
     //
     // Sync the actual paging related capabilities back to GCD service first.

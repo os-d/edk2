@@ -289,7 +289,7 @@ CoreAcquireGcdMemoryLock (
   VOID
   )
 {
-  DEBUG ((DEBUG_ERROR, "GcdLockAcquired\n"));
+  DEBUG ((DEBUG_VERBOSE, "GcdLockAcquired\n"));
   CoreAcquireLock (&mGcdMemorySpaceLock);
 }
 
@@ -302,7 +302,7 @@ CoreReleaseGcdMemoryLock (
   VOID
   )
 {
-  DEBUG ((DEBUG_ERROR, "GcdLockReleased\n"));
+  DEBUG ((DEBUG_VERBOSE, "GcdLockReleased\n"));
   CoreReleaseLock (&mGcdMemorySpaceLock);
 }
 
@@ -1580,6 +1580,8 @@ CoreAddMemorySpace (
   EFI_PHYSICAL_ADDRESS  PageBaseAddress;
   UINT64                PageLength;
 
+  // OSDDEBUG come back and update this to just allocate memory to not have to change all consumers
+
   Status = CoreInternalAddMemorySpace (GcdMemoryType, BaseAddress, Length, Capabilities);
 
   if (!EFI_ERROR (Status) && ((GcdMemoryType == EfiGcdMemoryTypeSystemMemory) || (GcdMemoryType == EfiGcdMemoryTypeMoreReliable))) {
@@ -2612,7 +2614,7 @@ CoreInitializeMemoryServices (
     EfiGcdMemoryTypeSystemMemory,
     BaseAddress,
     RShiftU64 (Length, EFI_PAGE_SHIFT),
-    Capabilities,
+    0,//Capabilities, OSDDEBUG let's get the attributes from the resource descriptor hobs, too? They should have them
     Capabilities,
     gDxeCoreImageHandle
     );
@@ -2630,7 +2632,7 @@ CoreInitializeMemoryServices (
     EfiGcdMemoryTypeNonExistent,
     0,
     BaseAddress / EFI_PAGE_SIZE, // number of pages until the original allocation
-    Capabilities,
+    0, // Capabilities, OSDDEBUG can't use attributes from resource descriptor hobs
     Capabilities, // OSDDEBUG should be setting capabilities from the get go
     NULL
     );
@@ -2648,7 +2650,7 @@ CoreInitializeMemoryServices (
     EfiGcdMemoryTypeNonExistent,
     BaseAddress + Length,
     ((LShiftU64 (1, SizeOfMemorySpace) - 1) - BaseAddress + Length) / EFI_PAGE_SIZE, // OSDDEBUG # of pages, which is from end of original descriptor to end of mem, divided by page size
-    Capabilities,
+    0, //Capabilities, OSDDEBUG can't use attributes from resource descriptor hobs
     Capabilities,
     NULL
     );

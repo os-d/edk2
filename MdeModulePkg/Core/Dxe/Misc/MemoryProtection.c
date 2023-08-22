@@ -232,9 +232,11 @@ SetUefiImageMemoryAttributes (
 
   // Status = CoreSetMemorySpaceCapabilities (BaseAddress, Length, Descriptor.Capabilities | FinalAttributes);
   // ASSERT_EFI_ERROR (Status);
-  gCpu->SetMemoryAttributes (gCpu, BaseAddress, Length, FinalAttributes);
+  Status = gCpu->SetMemoryAttributes (gCpu, BaseAddress, Length, FinalAttributes);
+  DEBUG ((DEBUG_ERROR, "OSDDEBUG 1007\n"));
   // Status = CoreSetMemorySpaceAttributes (BaseAddress, Length, FinalAttributes);
   ASSERT_EFI_ERROR (Status); // OSDDEBUG probably need to set capabilities first?
+  DEBUG ((DEBUG_ERROR, "OSDDEBUG 1008\n"));
 }
 
 /**
@@ -275,7 +277,7 @@ SetUefiImageProtectionAttributes (
       //
       // DATA
       //
-      DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 403\n"));
+      DEBUG ((DEBUG_ERROR, "OSDDEBUG 403\n"));
       SetUefiImageMemoryAttributes (
         CurrentBase,
         ImageRecordCodeSection->CodeSegmentBase - CurrentBase,
@@ -286,7 +288,7 @@ SetUefiImageProtectionAttributes (
     //
     // CODE
     //
-    DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 404\n"));
+    DEBUG ((DEBUG_ERROR, "OSDDEBUG 404\n"));
     SetUefiImageMemoryAttributes (
       ImageRecordCodeSection->CodeSegmentBase,
       ImageRecordCodeSection->CodeSegmentSize,
@@ -303,7 +305,7 @@ SetUefiImageProtectionAttributes (
     //
     // DATA
     //
-    DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 405\n"));
+    DEBUG ((DEBUG_ERROR, "OSDDEBUG 405\n"));
     SetUefiImageMemoryAttributes (
       CurrentBase,
       ImageEnd - CurrentBase,
@@ -434,6 +436,8 @@ ProtectUefiImage (
       ASSERT (FALSE);
       return;
   }
+
+  DEBUG ((DEBUG_ERROR, "OSDDEBUG actually applying image protection\n"));
 
   ImageRecord = AllocateZeroPool (sizeof (*ImageRecord));
   if (ImageRecord == NULL) {
@@ -636,6 +640,7 @@ UnprotectUefiImage (
                       );
 
       if (ImageRecord->ImageBase == (EFI_PHYSICAL_ADDRESS)(UINTN)LoadedImage->ImageBase) {
+        DEBUG ((DEBUG_ERROR, "OSDDEBUG 1001\n"));
         SetUefiImageMemoryAttributes (
           ImageRecord->ImageBase,
           ImageRecord->ImageSize,
@@ -895,7 +900,7 @@ InitializeDxeNxMemoryProtectionPolicy (
   while ((UINTN)MemoryMapEntry < (UINTN)MemoryMapEnd) {
     Attributes = GetPermissionAttributeForMemoryType (MemoryMapEntry->Type);
     if (Attributes != 0) {
-      DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 407\n"));
+      DEBUG ((DEBUG_ERROR, "OSDDEBUG 407\n"));
       SetUefiImageMemoryAttributes (
         MemoryMapEntry->PhysicalStart,
         LShiftU64 (MemoryMapEntry->NumberOfPages, EFI_PAGE_SHIFT),
@@ -910,6 +915,7 @@ InitializeDxeNxMemoryProtectionPolicy (
           (gMps.Dxe.NullPointerDetection.Enabled))
       {
         ASSERT (MemoryMapEntry->NumberOfPages > 0);
+        DEBUG ((DEBUG_ERROR, "OSDDEBUG 1002\n"));
         SetUefiImageMemoryAttributes (
           0,
           EFI_PAGES_TO_SIZE (1),
@@ -927,6 +933,7 @@ InitializeDxeNxMemoryProtectionPolicy (
             LShiftU64 (MemoryMapEntry->NumberOfPages, EFI_PAGE_SHIFT))) &&
           gMps.Dxe.CpuStackGuardEnabled)
       {
+        DEBUG ((DEBUG_ERROR, "OSDDEBUG 1003\n"));
         SetUefiImageMemoryAttributes (
           StackBase,
           EFI_PAGES_TO_SIZE (1),
@@ -1013,11 +1020,13 @@ ProtectHobList (
   }
 
   // Protect the HOB list.
+  DEBUG ((DEBUG_ERROR, "OSDDEBUG 1004\n"));
   SetUefiImageMemoryAttributes (
     (UINTN)gHobList,
     ALIGN_VALUE (((UINTN)Hob.Raw + GET_HOB_LENGTH (Hob)) - (UINTN)GetHobList (), EFI_PAGE_SIZE),
     EFI_MEMORY_XP | EFI_MEMORY_RO
     );
+  DEBUG ((DEBUG_ERROR, "OSDDEBUG 1009\n"));
 }
 
 /**
@@ -1051,6 +1060,8 @@ MemoryProtectionCpuArchProtocolNotify (
   // Mark the HOB list XP and RO.
   ProtectHobList ();
 
+  DEBUG ((DEBUG_ERROR, "OSDDEBUG 1010\n"));
+
   //
   // Apply the memory protection policy on non-BScode/RTcode regions.
   //
@@ -1062,6 +1073,8 @@ MemoryProtectionCpuArchProtocolNotify (
   // Call notify function meant for Heap Guard.
   //
   HeapGuardCpuArchProtocolNotify ();
+
+  DEBUG ((DEBUG_ERROR, "OSDDEBUG 1011\n"));
 
   if (!IS_DXE_IMAGE_PROTECTION_ACTIVE) {
     goto Done;
@@ -1096,6 +1109,8 @@ MemoryProtectionCpuArchProtocolNotify (
     if (EFI_ERROR (Status)) {
       LoadedImageDevicePath = NULL;
     }
+     
+    DEBUG ((DEBUG_ERROR, "OSDDEBUG 1012\n"));
 
     ProtectUefiImage (LoadedImage, LoadedImageDevicePath);
   }
@@ -1103,6 +1118,7 @@ MemoryProtectionCpuArchProtocolNotify (
   FreePool (HandleBuffer);
 
 Done:
+  DEBUG ((DEBUG_ERROR, "OSDDEBUG 1013\n"));
   CoreCloseEvent (Event);
 }
 
@@ -1129,7 +1145,7 @@ MemoryProtectionExitBootServicesCallback (
   if (IS_DXE_IMAGE_PROTECTION_ACTIVE) {
     for (Link = gRuntime->ImageHead.ForwardLink; Link != &gRuntime->ImageHead; Link = Link->ForwardLink) {
       RuntimeImage = BASE_CR (Link, EFI_RUNTIME_IMAGE_ENTRY, Link);
-      DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 402\n"));
+      DEBUG ((DEBUG_ERROR, "OSDDEBUG 402\n"));
       SetUefiImageMemoryAttributes ((UINT64)(UINTN)RuntimeImage->ImageBase, ALIGN_VALUE (RuntimeImage->ImageSize, EFI_PAGE_SIZE), 0);
     }
   }

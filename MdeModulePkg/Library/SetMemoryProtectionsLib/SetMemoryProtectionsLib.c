@@ -37,7 +37,7 @@ typedef struct {
   TRUE, /* Stack Guard */                             \
   TRUE, /* Stack Execution Protection */              \
   {     /* NULL Pointer Detection */                  \
-    .Enabled                                = TRUE,   \
+    .Enabled                                = FALSE,   \
     .DisableEndOfDxe                        = FALSE,  \
     .NonstopModeEnabled                     = FALSE    \
   },                                                  \

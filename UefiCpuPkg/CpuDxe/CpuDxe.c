@@ -777,9 +777,9 @@ RefreshMemoryAttributesFromMtrr (
   // Set default attributes to all spaces.
   //
   for (Index = 0; Index < NumberOfDescriptors; Index++) {
-    // if (MemorySpaceMap[Index].GcdMemoryType == EfiGcdMemoryTypeNonExistent) {
-    //   continue;
-    // }
+    if (MemorySpaceMap[Index].GcdMemoryType == EfiGcdMemoryTypeNonExistent) {
+      continue;
+    }
 
     gDS->SetMemorySpaceAttributes (
            MemorySpaceMap[Index].BaseAddress,
@@ -1282,10 +1282,14 @@ InitializeCpu (
                   );
   ASSERT_EFI_ERROR (Status);
 
+   DEBUG ((DEBUG_ERROR, "OSDDEBUG 1015\n"));
+
   //
   // Refresh GCD memory space map according to MTRR value.
   //
   RefreshGcdMemoryAttributes ();
+
+   DEBUG ((DEBUG_ERROR, "OSDDEBUG 1016\n"));
 
   //
   // Add and allocate local APIC memory mapped space
