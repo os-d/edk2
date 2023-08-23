@@ -92,7 +92,7 @@ SetGcdMemorySpaceAttributes (
   UINT64                RegionLength;
 
   DEBUG ((
-    DEBUG_GCD,
+    DEBUG_ERROR,
     "SetGcdMemorySpaceAttributes[0x%lX; 0x%lX] = 0x%lX\n",
     BaseAddress,
     BaseAddress + Length,

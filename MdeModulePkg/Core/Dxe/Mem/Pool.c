@@ -734,11 +734,13 @@ CoreFreePoolI (
   Head = BASE_CR (Buffer, POOL_HEAD, Data);
   ASSERT (Head != NULL);
 
-  DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 62 Head->Data 0x%llx Signature: 0x%x Buffer 0x%llx\n", Head->Data, Head->Signature, Buffer));
+  DEBUG ((DEBUG_ERROR, "OSDDEBUG 62 Head->Data 0x%llx Signature: 0x%x Buffer 0x%llx\n", Head->Data, Head->Signature, Buffer));
 
   if ((Head->Signature != POOL_HEAD_SIGNATURE) &&
       (Head->Signature != POOLPAGE_HEAD_SIGNATURE))
   {
+    Free = NULL;
+    Free->Index = 0;
     CoreDumpGcdMemorySpaceMap (TRUE);
     ASSERT (
       Head->Signature == POOL_HEAD_SIGNATURE ||
