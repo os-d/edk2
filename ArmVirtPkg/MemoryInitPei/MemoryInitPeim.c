@@ -102,10 +102,10 @@ InitializeMemory (
              );
   ASSERT_EFI_ERROR (Status);
 
-  DxeSettings                                      = DxeMemoryProtectionProfiles[DxeMemoryProtectionSettingsRelease].Settings;
+  DxeSettings                                      = DxeMemoryProtectionProfiles[DxeMemoryProtectionSettingsDebug].Settings;
   DxeSettings.NullPointerDetection.DisableEndOfDxe = TRUE;
 
-  SetDxeMemoryProtectionSettings (&DxeSettings, DxeMemoryProtectionSettingsRelease);
+  SetDxeMemoryProtectionSettings (&DxeSettings, DxeMemoryProtectionSettingsDebug);
 
   return Status;
 }

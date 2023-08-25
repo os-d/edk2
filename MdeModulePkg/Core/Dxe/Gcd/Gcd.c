@@ -2635,7 +2635,7 @@ CoreInitializeMemoryServices (
     EfiGcdMemoryTypeSystemMemory,
     BaseAddress,
     RShiftU64 (Length, EFI_PAGE_SHIFT),
-    0,//Capabilities,// OSDDEBUG let's get the attributes from the resource descriptor hobs, too? They should have them
+    Capabilities,// OSDDEBUG let's get the attributes from the resource descriptor hobs, too? They should have them
     Capabilities,
     gDxeCoreImageHandle
     );
@@ -2653,7 +2653,7 @@ CoreInitializeMemoryServices (
     EfiGcdMemoryTypeNonExistent, // OSDDEBUG rethink nonexistent, perhaps? Or on allocation change. hmm...should be getting existent ranges from hobs, not mmio though
     0,
     BaseAddress / EFI_PAGE_SIZE, // number of pages until the original allocation
-    0,//Capabilities,                // OSDDEBUG can't use attributes from resource descriptor hobs
+    Capabilities,                // OSDDEBUG can't use attributes from resource descriptor hobs
     Capabilities,                // OSDDEBUG should be setting capabilities from the get go
     NULL
     );
@@ -2671,7 +2671,7 @@ CoreInitializeMemoryServices (
     EfiGcdMemoryTypeNonExistent,
     BaseAddress + Length,
     ((LShiftU64 (1, SizeOfMemorySpace) - 1) - BaseAddress + Length) / EFI_PAGE_SIZE, // OSDDEBUG # of pages, which is from end of original descriptor to end of mem, divided by page size
-    0,//Capabilities, //OSDDEBUG can't use attributes from resource descriptor hobs
+    Capabilities, //OSDDEBUG can't use attributes from resource descriptor hobs
     Capabilities,
     NULL
     );

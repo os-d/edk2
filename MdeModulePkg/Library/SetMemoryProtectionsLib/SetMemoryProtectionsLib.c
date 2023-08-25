@@ -37,7 +37,7 @@ typedef struct {
   TRUE, /* Stack Guard */                             \
   TRUE, /* Stack Execution Protection */              \
   {     /* NULL Pointer Detection */                  \
-    .Enabled                                = FALSE,   \
+    .Enabled                                = TRUE,   \
     .DisableEndOfDxe                        = FALSE,  \
     .NonstopModeEnabled                     = FALSE    \
   },                                                  \
@@ -72,7 +72,7 @@ typedef struct {
     .PoolGuardEnabled                       = TRUE,   \
     .FreedMemoryGuardEnabled                = FALSE,  \
     .NonstopModeEnabled                     = FALSE,   \
-    .GuardAlignedToTail                     = FALSE   \
+    .GuardAlignedToTail                     = TRUE   \
   },                                                  \
   { /* Pool Guard */                                  \
     .EnabledForType = {                               \
