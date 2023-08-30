@@ -238,13 +238,13 @@ GetNextEntryAttribute (
     } else {
       if (*PrevEntryAttribute != INVALID_ENTRY) {
         // Update GCD with the last region
-        // SetGcdMemorySpaceAttributes (
-        //   MemorySpaceMap,
-        //   NumberOfDescriptors,
-        //   *StartGcdRegion,
-        //   (BaseAddress + (Index * TT_ADDRESS_AT_LEVEL (TableLevel))) - *StartGcdRegion,
-        //   PageAttributeToGcdAttribute (*PrevEntryAttribute)
-        //   );
+        SetGcdMemorySpaceAttributes (
+          MemorySpaceMap,
+          NumberOfDescriptors,
+          *StartGcdRegion,
+          (BaseAddress + (Index * TT_ADDRESS_AT_LEVEL (TableLevel))) - *StartGcdRegion,
+          PageAttributeToGcdAttribute (*PrevEntryAttribute)
+          );
 
         // Start of the new region
         *StartGcdRegion     = BaseAddress + (Index * TT_ADDRESS_AT_LEVEL (TableLevel));

@@ -1078,6 +1078,7 @@ RefreshGcdMemoryAttributesFromPaging (
                         Length,
                         NewAttributes
                         );
+        DEBUG ((DEBUG_ERROR, "OSDDEBUG 1001 Status: %r\n", Status));
         ASSERT_EFI_ERROR (Status);
         DEBUG ((
           DEBUG_ERROR,

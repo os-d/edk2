@@ -739,9 +739,9 @@ CoreFreePoolI (
   if ((Head->Signature != POOL_HEAD_SIGNATURE) &&
       (Head->Signature != POOLPAGE_HEAD_SIGNATURE))
   {
+    CoreDumpGcdMemorySpaceMap (TRUE);
     Free = NULL;
     Free->Index = 0;
-    CoreDumpGcdMemorySpaceMap (TRUE);
     ASSERT (
       Head->Signature == POOL_HEAD_SIGNATURE ||
       Head->Signature == POOLPAGE_HEAD_SIGNATURE

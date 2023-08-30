@@ -72,7 +72,11 @@ MemoryPeim (
                         EFI_RESOURCE_ATTRIBUTE_PRESENT |
                         EFI_RESOURCE_ATTRIBUTE_INITIALIZED |
                         EFI_RESOURCE_ATTRIBUTE_WRITE_BACK_CACHEABLE |
-                        EFI_RESOURCE_ATTRIBUTE_TESTED
+                        EFI_RESOURCE_ATTRIBUTE_TESTED |
+                        EFI_RESOURCE_ATTRIBUTE_WRITE_PROTECTABLE |
+                        EFI_RESOURCE_ATTRIBUTE_EXECUTION_PROTECTABLE |
+                        EFI_RESOURCE_ATTRIBUTE_READ_ONLY_PROTECTABLE |
+                        EFI_RESOURCE_ATTRIBUTE_READ_PROTECTABLE
                         );
 
   SystemMemoryTop = PcdGet64 (PcdSystemMemoryBase) + SystemMemorySize;
