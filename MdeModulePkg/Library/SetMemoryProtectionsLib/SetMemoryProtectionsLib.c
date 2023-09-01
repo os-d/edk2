@@ -68,7 +68,7 @@ typedef struct {
     }                                                 \
   },                                                  \
   { /* Heap Guard */                                  \
-    .PageGuardEnabled                       = FALSE,   \
+    .PageGuardEnabled                       = TRUE,   \
     .PoolGuardEnabled                       = TRUE,   \
     .FreedMemoryGuardEnabled                = FALSE,  \
     .NonstopModeEnabled                     = FALSE,   \
