@@ -1789,14 +1789,14 @@ CoreSetMemorySpaceAttributes (
   DEBUG ((DEBUG_ERROR, "GCD:SetMemorySpaceAttributes(Base=%016lx,Length=%016lx)\n", BaseAddress, Length));
   DEBUG ((DEBUG_ERROR, "  Attributes  = %016lx\n", Attributes));
 
-  CoreDumpGcdMemorySpaceMap (FALSE);
+  // CoreDumpGcdMemorySpaceMap (FALSE);
   CoreAcquireGcdMemoryLock ();
   Status = CoreConvertPagesEx (BaseAddress, EFI_SIZE_TO_PAGES (Length), FALSE, 0, TRUE, Attributes, FALSE, 0);
   ASSERT_EFI_ERROR (Status);
   CoreReleaseGcdMemoryLock ();
   // return Status;
   // Status = CoreConvertSpace (GCD_SET_ATTRIBUTES_MEMORY_OPERATION, (EFI_GCD_MEMORY_TYPE)0, (EFI_GCD_IO_TYPE)0, BaseAddress, Length, 0, Attributes); // OSDDEBUG both should be called here because CoreConvertPagesEx doesn't call into page table!! Or we need to merge functionality
-  // CoreDumpGcdMemorySpaceMap (FALSE);
+  CoreDumpGcdMemorySpaceMap (FALSE);
   return Status;
 }
 

@@ -699,10 +699,12 @@ CoreConvertPagesEx (
   EFI_HANDLE           ImageHandle;
   EFI_STATUS           Status = EFI_SUCCESS;
   UINT64               CpuArchAttributes;
+  UINT64               BaseAddress;
 
   Entry         = NULL;
   NumberOfBytes = LShiftU64 (NumberOfPages, EFI_PAGE_SHIFT);
   End           = Start + NumberOfBytes - 1;
+  BaseAddress   = Start;
 
   ASSERT (NumberOfPages);
   ASSERT ((Start & EFI_PAGE_MASK) == 0);
@@ -964,10 +966,10 @@ CoreConvertPagesEx (
       } else {
         // the page table code can allocate pages, so we need to free the lock ahead of time
         CoreReleaseGcdMemoryLock ();
-        DEBUG ((DEBUG_ERROR, "OSDDEBUG .10 actually setting attrs\n"));
+        DEBUG ((DEBUG_ERROR, "OSDDEBUG .10 actually setting attrs BaseAddress 0x%llx\n", BaseAddress));
         Status = gCpu->SetMemoryAttributes (
                         gCpu,
-                        Start,
+                        BaseAddress,
                         NumberOfBytes,
                         CpuArchAttributes
                         );

@@ -222,7 +222,7 @@ CpuSetMemoryAttributes (
     DEBUG ((DEBUG_ERROR, "OSDDEBUG 333 Status %r\n", Status));
     return Status;
   } else {
-    DEBUG ((DEBUG_ERROR, "OSDDEBUG .11 Status %r RegionArmAttributes 0x%llx ArmAttributes 0x%llx BaseAddress + Length 0x%llx RegionBaseAddress + RegionLength 0x%llx EfiAttributes 0x%llx\n", Status, RegionArmAttributes, ArmAttributes, BaseAddress + Length, RegionBaseAddress + RegionLength, EfiAttributes));
+    DEBUG ((DEBUG_ERROR, "OSDDEBUG .11 Status %r RegionArmAttributes 0x%llx ArmAttributes 0x%llx BaseAddress 0x%llx Length 0x%llx RegionBaseAddress + RegionLength 0x%llx EfiAttributes 0x%llx\n", Status, RegionArmAttributes, ArmAttributes, BaseAddress, Length, RegionBaseAddress + RegionLength, EfiAttributes));
     return EFI_SUCCESS;
   }
 }
