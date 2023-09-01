@@ -169,6 +169,8 @@ CoreDumpGcdMemorySpaceMap (
   LIST_ENTRY         *Link;
   EFI_GCD_MAP_ENTRY  *Entry;
 
+  return;
+
   // if ((PcdGet32 (PcdDebugPrintErrorLevel) & DEBUG_GCD) == 0) {
   //   return;
   // }
@@ -676,9 +678,9 @@ CoreSearchGcdMapEntry (
   Link = Map->ForwardLink;
   while (Link != Map) {
     Entry = CR (Link, EFI_GCD_MAP_ENTRY, Link, EFI_GCD_MAP_SIGNATURE);
-    DEBUG ((DEBUG_ERROR, "OSDDEBUG BaseAddress 0x%llx Entry->BaseAddress 0x%llx\n", BaseAddress, Entry->BaseAddress));
+    DEBUG ((DEBUG_VERBOSE, "OSDDEBUG BaseAddress 0x%llx Entry->BaseAddress 0x%llx\n", BaseAddress, Entry->BaseAddress));
     if ((BaseAddress >= Entry->BaseAddress) && (BaseAddress <= Entry->EndAddress)) {
-      DEBUG ((DEBUG_ERROR, "OSDDEBUG 100\n"));
+      DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 100\n"));
       *StartLink = Link;
     }
 
@@ -687,7 +689,7 @@ CoreSearchGcdMapEntry (
           ((BaseAddress + Length - 1) <= Entry->EndAddress))
       {
         *EndLink = Link;
-        DEBUG ((DEBUG_ERROR, "OSDDEBUG 101 Entry->BaseAddress 0x%llx Entry->EndAddress 0x%llx\n", Entry->BaseAddress, Entry->EndAddress));
+        DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 101 Entry->BaseAddress 0x%llx Entry->EndAddress 0x%llx\n", Entry->BaseAddress, Entry->EndAddress));
         return EFI_SUCCESS;
       }
     }
@@ -1784,18 +1786,17 @@ CoreSetMemorySpaceAttributes (
   )
 {
   EFI_STATUS Status;
-  DEBUG ((DEBUG_GCD, "GCD:SetMemorySpaceAttributes(Base=%016lx,Length=%016lx)\n", BaseAddress, Length));
-  DEBUG ((DEBUG_GCD, "  Attributes  = %016lx\n", Attributes));
+  DEBUG ((DEBUG_ERROR, "GCD:SetMemorySpaceAttributes(Base=%016lx,Length=%016lx)\n", BaseAddress, Length));
+  DEBUG ((DEBUG_ERROR, "  Attributes  = %016lx\n", Attributes));
 
-  // CoreDumpGcdMemorySpaceMap (TRUE);
-
-  // CoreAcquireGcdMemoryLock ();
-  // Status = CoreConvertPagesEx (BaseAddress, Length, FALSE, 0, TRUE, Attributes, FALSE, 0);
-  // ASSERT_EFI_ERROR (Status);
-  // CoreReleaseGcdMemoryLock ();
+  CoreDumpGcdMemorySpaceMap (FALSE);
+  CoreAcquireGcdMemoryLock ();
+  Status = CoreConvertPagesEx (BaseAddress, EFI_SIZE_TO_PAGES (Length), FALSE, 0, TRUE, Attributes, FALSE, 0);
+  ASSERT_EFI_ERROR (Status);
+  CoreReleaseGcdMemoryLock ();
   // return Status;
-  Status = CoreConvertSpace (GCD_SET_ATTRIBUTES_MEMORY_OPERATION, (EFI_GCD_MEMORY_TYPE)0, (EFI_GCD_IO_TYPE)0, BaseAddress, Length, 0, Attributes); // OSDDEBUG both should be called here because CoreConvertPagesEx doesn't call into page table!! Or we need to merge functionality
-  // CoreDumpGcdMemorySpaceMap (TRUE);
+  // Status = CoreConvertSpace (GCD_SET_ATTRIBUTES_MEMORY_OPERATION, (EFI_GCD_MEMORY_TYPE)0, (EFI_GCD_IO_TYPE)0, BaseAddress, Length, 0, Attributes); // OSDDEBUG both should be called here because CoreConvertPagesEx doesn't call into page table!! Or we need to merge functionality
+  // CoreDumpGcdMemorySpaceMap (FALSE);
   return Status;
 }
 
@@ -1832,16 +1833,16 @@ CoreSetMemorySpaceCapabilities (
   // OSDDEBUG, this needs to be able to split up descriptors if required, which is why I went to CoreConvertPagesEx, because it partially does that. It works for non-heapguard cases because the memory gets allocated first then attributes changed.
   // maybe simpler answer is getting heap guard a bit smarter
 
-  Status = CoreConvertSpace (GCD_SET_CAPABILITIES_MEMORY_OPERATION, (EFI_GCD_MEMORY_TYPE)0, (EFI_GCD_IO_TYPE)0, BaseAddress, Length, Capabilities, 0);
+  // Status = CoreConvertSpace (GCD_SET_CAPABILITIES_MEMORY_OPERATION, (EFI_GCD_MEMORY_TYPE)0, (EFI_GCD_IO_TYPE)0, BaseAddress, Length, Capabilities, 0);
   // if (!EFI_ERROR (Status)) {
   //   // OSDDEBUG do we not need this since we don't have separate descriptors? CoreUpdateMemoryAttributes (BaseAddress, RShiftU64 (Length, EFI_PAGE_SHIFT), Capabilities & (~EFI_MEMORY_RUNTIME));
   // }
 
   // OSDDEBUG use this logic as it already handles allocating new gcd entries, whereas coreconvertspace does not. Probably can be merged to one function? Certainly page vs gcd functions can be cleaned and split better
   // Probably attribute setting should go to here, too?
-  // CoreAcquireGcdMemoryLock ();
-  // Status = CoreConvertPagesEx (BaseAddress, Length, FALSE, 0, FALSE, 0, TRUE, Capabilities);
-  // CoreReleaseGcdMemoryLock ();
+  CoreAcquireGcdMemoryLock ();
+  Status = CoreConvertPagesEx (BaseAddress, EFI_SIZE_TO_PAGES (Length), FALSE, 0, FALSE, 0, TRUE, Capabilities);
+  CoreReleaseGcdMemoryLock ();
 
   return Status;
 }
@@ -1901,7 +1902,7 @@ CoreGetMemorySpaceMap (
     //
     DescriptorCount = CoreCountGcdMapEntry (&mGcdMemorySpaceMap);
     DEBUG ((DEBUG_ERROR, "OSDDEBUG 2350 Descriptor Count %u\n", DescriptorCount));
-    // CoreDumpGcdMemorySpaceMap (TRUE);
+    // CoreDumpGcdMemorySpaceMap (FALSE);
     DEBUG ((DEBUG_ERROR, "OSDDEBUG 2351 Descriptor Count %u\n", DescriptorCount));
     if ((DescriptorCount <= *NumberOfDescriptors) && (*MemorySpaceMap != NULL)) {
       //
@@ -1943,7 +1944,7 @@ CoreGetMemorySpaceMap (
     ActualDescriptorCount = CoreCountGcdMapEntry (&mGcdMemorySpaceMap);
 
     DEBUG ((DEBUG_ERROR, "OSDDEBUG 2352 Descriptor Count %u\n", ActualDescriptorCount));
-    // CoreDumpGcdMemorySpaceMap (TRUE);
+    // CoreDumpGcdMemorySpaceMap (FALSE);
     DEBUG ((DEBUG_ERROR, "OSDDEBUG 2353 Descriptor Count %u\n", DescriptorCount));
 
     *MemorySpaceMap = AllocatePool (
@@ -1952,7 +1953,7 @@ CoreGetMemorySpaceMap (
                         );
     ActualDescriptorCount = CoreCountGcdMapEntry (&mGcdMemorySpaceMap);
     DEBUG ((DEBUG_ERROR, "OSDDEBUG 2354 Descriptor Count %u *MemorySpaceMap: 0x%llx\n", ActualDescriptorCount, (UINT64)*MemorySpaceMap));
-    // CoreDumpGcdMemorySpaceMap (TRUE);
+    // CoreDumpGcdMemorySpaceMap (FALSE);
     DEBUG ((DEBUG_ERROR, "OSDDEBUG 2355 Descriptor Count %u\n", DescriptorCount));
     if (*MemorySpaceMap == NULL) {
       *NumberOfDescriptors = 0;
@@ -2639,7 +2640,7 @@ CoreInitializeMemoryServices (
     gDxeCoreImageHandle
     );
 
-  CoreDumpGcdMemorySpaceMap (TRUE);
+  CoreDumpGcdMemorySpaceMap (FALSE);
 
   DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 30 BaseAddress: 0x%llx Length: 0x%llx Shifted Length: 0x%llx\n", BaseAddress, Length, RShiftU64 (Length, EFI_PAGE_SHIFT)));
 
@@ -2657,7 +2658,7 @@ CoreInitializeMemoryServices (
     NULL
     );
 
-  CoreDumpGcdMemorySpaceMap (TRUE);
+  CoreDumpGcdMemorySpaceMap (FALSE);
 
   DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 31\n"));
 
@@ -2675,7 +2676,7 @@ CoreInitializeMemoryServices (
     NULL
     );
 
-  CoreDumpGcdMemorySpaceMap (TRUE);
+  CoreDumpGcdMemorySpaceMap (FALSE);
 
   DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 32\n"));
 
@@ -2751,7 +2752,7 @@ CoreInitializeGcdServices (
 
   InsertHeadList (&mGcdMemorySpaceMap, &Entry->Link); OSDDEBUG already initialized in memory services */
 
-  CoreDumpGcdMemorySpaceMap (TRUE);
+  CoreDumpGcdMemorySpaceMap (FALSE);
 
   // OSDDEBUG, need IoSpaceMap separate? Probably. Separate descriptor, though?
   //

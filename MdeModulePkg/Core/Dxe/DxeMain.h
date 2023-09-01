@@ -2854,4 +2854,17 @@ CoreDumpGcdMemorySpaceMap (
   BOOLEAN  InitialMap
   );
 
+/**
+  Return the memory attribute specified by Attributes
+
+  @param  Attributes             A num with some attribute bits on.
+
+  @return The enum value of memory attribute.
+
+**/
+UINT64
+ConverToCpuArchAttributes (
+  UINT64  Attributes
+  );
+
 #endif

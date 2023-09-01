@@ -42,7 +42,7 @@ typedef struct {
     .NonstopModeEnabled                     = FALSE    \
   },                                                  \
   { /* Image Protection */                            \
-    .ProtectImageFromUnknown                = FALSE,   \
+    .ProtectImageFromUnknown                = TRUE,   \
     .ProtectImageFromFv                     = TRUE    \
   },                                                  \
   { /* Execution Protection */                        \
@@ -68,7 +68,7 @@ typedef struct {
     }                                                 \
   },                                                  \
   { /* Heap Guard */                                  \
-    .PageGuardEnabled                       = FALSE,   \
+    .PageGuardEnabled                       = TRUE,   \
     .PoolGuardEnabled                       = TRUE,   \
     .FreedMemoryGuardEnabled                = FALSE,  \
     .NonstopModeEnabled                     = FALSE,   \

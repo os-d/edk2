@@ -213,7 +213,7 @@ CoreAddRange (
 
     if (Entry->EndAddress + 1 == Start) {
       Start = Entry->BaseAddress;
-      RemoveMemoryMapEntry (Entry);
+      RemoveMemoryMapEntry (Entry); // OSDDEBUG need to free pool here, no, we cache them currently, which is ok
     } else if (Entry->BaseAddress == End + 1) {
       End = Entry->EndAddress;
       RemoveMemoryMapEntry (Entry);
@@ -240,8 +240,7 @@ CoreAddRange (
 
   mMapDepth += 1;
   ASSERT (mMapDepth < MAX_MAP_DEPTH);
-
-  return;
+return;
 }
 
 /**
@@ -272,14 +271,19 @@ AllocateMemoryMapEntry (
     //
     DEBUG ((DEBUG_VERBOSE, "OSDDEBUG allocating mem map mem\n"));
     CoreDumpGcdMemorySpaceMap (FALSE);
+    // mOnGuarding = TRUE;
     FreeDescriptorEntries = CoreAllocatePoolPages (
                               EfiBootServicesData,
                               EFI_SIZE_TO_PAGES (DEFAULT_PAGE_ALLOCATION_GRANULARITY),
                               DEFAULT_PAGE_ALLOCATION_GRANULARITY,
                               FALSE
                               );
+    // CoreReleaseGcdMemoryLock (); 
+    // FreeDescriptorEntries = AllocatePool (DEFAULT_PAGE_ALLOCATION_GRANULARITY);
+    // CoreAcquireGcdMemoryLock ();
+    // mOnGuarding = FALSE;
     CoreDumpGcdMemorySpaceMap (FALSE);
-    DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 615 allocating mem map mem FreeDescriptorEntries: 0x%llx\n", FreeDescriptorEntries));
+    DEBUG ((DEBUG_ERROR, "OSDDEBUG 615 allocating mem map mem FreeDescriptorEntries: 0x%llx\n", FreeDescriptorEntries));
     if (FreeDescriptorEntries != NULL) {
       //
       // Enqueue the free memory map entries into the list
@@ -299,7 +303,7 @@ AllocateMemoryMapEntry (
   Entry = CR (mFreeMemoryMapEntryList.ForwardLink, EFI_GCD_MAP_ENTRY, Link, EFI_GCD_MAP_SIGNATURE);
   RemoveEntryList (&Entry->Link);
 
-  DEBUG ((DEBUG_VERBOSE, "OSDDEBUG done allocating mem map mem\n"));
+  DEBUG ((DEBUG_ERROR, "OSDDEBUG done allocating mem map mem Entry 0x%llx\n", Entry));
 
   return Entry;
 }
@@ -693,6 +697,8 @@ CoreConvertPagesEx (
   LIST_ENTRY           *Link;
   EFI_GCD_MAP_ENTRY    *Entry;
   EFI_HANDLE           ImageHandle;
+  EFI_STATUS           Status = EFI_SUCCESS;
+  UINT64               CpuArchAttributes;
 
   Entry         = NULL;
   NumberOfBytes = LShiftU64 (NumberOfPages, EFI_PAGE_SHIFT);
@@ -812,11 +818,6 @@ CoreConvertPagesEx (
       }
     }
 
-    if (((UINTN)Start == 0x7D544000) || ((UINTN)Start == 0x7D4F8000)) {
-      DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 611 %a\n", __func__));
-      CoreDumpGcdMemorySpaceMap (FALSE);
-    }
-
     //
     // Pull range out of descriptor
     //
@@ -876,7 +877,7 @@ CoreConvertPagesEx (
       EfiMemoryType = NewType;
     } else if (ChangingAttributes) {
       Attribute     = NewAttributes;
-      EfiMemoryType = Entry->EfiMemoryType;
+      EfiMemoryType = Entry->EfiMemoryType; 
     } else {
       Capabilities  = NewCapabilities;
       EfiMemoryType = Entry->EfiMemoryType;
@@ -914,9 +915,6 @@ CoreConvertPagesEx (
         }
       } else {
         DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 700 Start: 0x%llx RangeEnd - Start + 1 0x%llx RangeEnd 0x%llx Start 0x%llx\n", Start, (RangeEnd - Start + 1), RangeEnd, Start));
-        if (Start == 0x7BF2F000) {
-          DumpGuardedMemoryBitmap ();
-        }
 
         DEBUG_CLEAR_MEMORY ((VOID *)(UINTN)Start, (UINTN)(RangeEnd - Start + 1));
         DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 710 Start: 0x%llx RangeEnd - Start + 1 0x%llx RangeEnd 0x%llx Start 0x%llx\n", Start, (RangeEnd - Start + 1), RangeEnd, Start));
@@ -938,7 +936,47 @@ CoreConvertPagesEx (
   // Converted the whole range, done
   //
 
-  return EFI_SUCCESS;
+  //
+  // Actually change the attributes in the page table, now
+  //
+  if (ChangingAttributes) {
+    //
+    // Call CPU Arch Protocol to attempt to set attributes on the range
+    //
+    CpuArchAttributes = ConverToCpuArchAttributes (NewAttributes);
+    //
+    // CPU arch attributes include page attributes and cache attributes.
+    // Only page attributes supports to be cleared, but not cache attributes.
+    // Caller is expected to use GetMemorySpaceDescriptor() to get the current
+    // attributes, AND/OR attributes, and then calls SetMemorySpaceAttributes()
+    // to set the new attributes.
+    // So 0 CPU arch attributes should not happen as memory should always have
+    // a cache attribute (no matter UC or WB, etc).
+    //
+    // Here, 0 CPU arch attributes will be filtered to be compatible with the
+    // case that caller just calls SetMemorySpaceAttributes() with none CPU
+    // arch attributes (for example, RUNTIME) as the purpose of the case is not
+    // to clear CPU arch attributes.
+    //
+    if (CpuArchAttributes != 0) {
+      if (gCpu == NULL) {
+        Status = EFI_NOT_AVAILABLE_YET;
+      } else {
+        // the page table code can allocate pages, so we need to free the lock ahead of time
+        CoreReleaseGcdMemoryLock ();
+        DEBUG ((DEBUG_ERROR, "OSDDEBUG .10 actually setting attrs\n"));
+        Status = gCpu->SetMemoryAttributes (
+                        gCpu,
+                        Start,
+                        NumberOfBytes,
+                        CpuArchAttributes
+                        );
+        CoreAcquireGcdMemoryLock ();
+      }
+    }
+  }
+
+  return Status;
 }
 
 /**

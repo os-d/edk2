@@ -783,6 +783,7 @@ RefreshMemoryAttributesFromMtrr (
       continue;
     }
 
+    DEBUG ((DEBUG_ERROR, "OSDDEBUG 1022.1 MemorySpaceMap[Index].BaseAddress 0x%llx Length 0x%llx\n", MemorySpaceMap[Index].BaseAddress, MemorySpaceMap[Index].Length));
     gDS->SetMemorySpaceAttributes (
            MemorySpaceMap[Index].BaseAddress,
            MemorySpaceMap[Index].Length,

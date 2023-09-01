@@ -196,12 +196,13 @@ CpuSetMemoryAttributes (
   UINTN       RegionArmAttributes;
 
   if (mIsFlushingGCD) {
+    DEBUG ((DEBUG_ERROR, "OSDDEBUG flushing GCD\n"));
     return EFI_SUCCESS;
   }
 
   if ((BaseAddress & (SIZE_4KB - 1)) != 0) {
     // Minimum granularity is SIZE_4KB (4KB on ARM)
-    DEBUG ((DEBUG_PAGE, "CpuSetMemoryAttributes(%lx, %lx, %lx): Minimum granularity is SIZE_4KB\n", BaseAddress, Length, EfiAttributes));
+    DEBUG ((DEBUG_ERROR, "CpuSetMemoryAttributes(%lx, %lx, %lx): Minimum granularity is SIZE_4KB\n", BaseAddress, Length, EfiAttributes));
     return EFI_UNSUPPORTED;
   }
 
@@ -218,9 +219,10 @@ CpuSetMemoryAttributes (
       ((BaseAddress + Length) > (RegionBaseAddress + RegionLength)))
   {
     Status = ArmSetMemoryAttributes (BaseAddress, Length, EfiAttributes, 0);
-    DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 333 Status %r\n", Status));
+    DEBUG ((DEBUG_ERROR, "OSDDEBUG 333 Status %r\n", Status));
     return Status;
   } else {
+    DEBUG ((DEBUG_ERROR, "OSDDEBUG .11 Status %r RegionArmAttributes 0x%llx ArmAttributes 0x%llx BaseAddress + Length 0x%llx RegionBaseAddress + RegionLength 0x%llx EfiAttributes 0x%llx\n", Status, RegionArmAttributes, ArmAttributes, BaseAddress + Length, RegionBaseAddress + RegionLength, EfiAttributes));
     return EFI_SUCCESS;
   }
 }

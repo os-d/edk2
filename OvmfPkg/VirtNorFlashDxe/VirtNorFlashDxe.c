@@ -440,13 +440,20 @@ NorFlashFvbInitialize (
   // Set the index of the first LBA for the FVB
   Instance->StartLba = (mFlashNvStorageVariableBase - Instance->RegionBaseAddress) / Instance->BlockSize;
 
+  DEBUG ((DEBUG_ERROR, "OSDDEBUG 403\n"));
+
   BootMode = GetBootModeHob ();
   if (BootMode == BOOT_WITH_DEFAULT_SETTINGS) {
     Status = EFI_INVALID_PARAMETER;
   } else {
     // Determine if there is a valid header at the beginning of the NorFlash
+    DEBUG ((DEBUG_ERROR, "OSDDEBUG 405 Instance 0x%llx\n", Instance));
+    DEBUG ((DEBUG_ERROR, "OSDDEBUG 405.1 Instance->RegionBaseAddress 0x%llx\n", Instance->RegionBaseAddress));
     Status = ValidateFvHeader (Instance);
+    DEBUG ((DEBUG_ERROR, "OSDDEBUG 406\n"));
   }
+
+  DEBUG ((DEBUG_ERROR, "OSDDEBUG 404\n"));
 
   // Install the Default FVB header if required
   if (EFI_ERROR (Status)) {

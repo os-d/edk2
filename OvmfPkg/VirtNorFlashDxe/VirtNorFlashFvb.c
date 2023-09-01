@@ -191,10 +191,16 @@ ValidateFvHeader (
   UINTN                       VariableStoreLength;
   UINTN                       FvLength;
 
+  DEBUG((DEBUG_ERROR, "OSDDEBUG .1\n"));
+
   FwVolHeader = (EFI_FIRMWARE_VOLUME_HEADER *)Instance->RegionBaseAddress;
+
+  DEBUG((DEBUG_ERROR, "OSDDEBUG .4\n"));
 
   FvLength = PcdGet32 (PcdFlashNvStorageVariableSize) + PcdGet32 (PcdFlashNvStorageFtwWorkingSize) +
              PcdGet32 (PcdFlashNvStorageFtwSpareSize);
+
+  DEBUG((DEBUG_ERROR, "OSDDEBUG .5\n"));
 
   //
   // Verify the header revision, header signature, length
@@ -213,6 +219,8 @@ ValidateFvHeader (
       ));
     return EFI_NOT_FOUND;
   }
+
+  DEBUG((DEBUG_ERROR, "OSDDEBUG .2\n"));
 
   // Check the Firmware Volume Guid
   if ( CompareGuid (&FwVolHeader->FileSystemGuid, &gEfiSystemNvDataFvGuid) == FALSE ) {
@@ -249,6 +257,8 @@ ValidateFvHeader (
       ));
     return EFI_NOT_FOUND;
   }
+
+  DEBUG((DEBUG_ERROR, "OSDDEBUG .3\n"));
 
   VariableStoreLength = PcdGet32 (PcdFlashNvStorageVariableSize) - FwVolHeader->HeaderLength;
   if (VariableStoreHeader->Size != VariableStoreLength) {

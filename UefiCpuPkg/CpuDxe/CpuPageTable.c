@@ -1070,9 +1070,7 @@ RefreshGcdMemoryAttributesFromPaging (
       {
         NewAttributes = (MemorySpaceMap[Index].Attributes &
                          ~EFI_MEMORY_ATTRIBUTE_MASK) | Attributes;
-        if (BaseAddress == 0x0) {
-          DEBUG ((DEBUG_ERROR, "OSDDEBUG 1000 Attributes: 0x%llx\n", Attributes));
-        }
+        DEBUG ((DEBUG_ERROR, "OSDDEBUG 1111 BaseAddress: 0x%llx Length: 0x%llx\n", BaseAddress, Length));
         Status = gDS->SetMemorySpaceAttributes (
                         BaseAddress,
                         Length,
