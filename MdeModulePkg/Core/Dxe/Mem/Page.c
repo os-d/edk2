@@ -283,7 +283,7 @@ AllocateMemoryMapEntry (
     // CoreAcquireGcdMemoryLock ();
     // mOnGuarding = FALSE;
     CoreDumpGcdMemorySpaceMap (FALSE);
-    DEBUG ((DEBUG_ERROR, "OSDDEBUG 615 allocating mem map mem FreeDescriptorEntries: 0x%llx\n", FreeDescriptorEntries));
+    DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 615 allocating mem map mem FreeDescriptorEntries: 0x%llx\n", FreeDescriptorEntries));
     if (FreeDescriptorEntries != NULL) {
       //
       // Enqueue the free memory map entries into the list
@@ -303,7 +303,7 @@ AllocateMemoryMapEntry (
   Entry = CR (mFreeMemoryMapEntryList.ForwardLink, EFI_GCD_MAP_ENTRY, Link, EFI_GCD_MAP_SIGNATURE);
   RemoveEntryList (&Entry->Link);
 
-  DEBUG ((DEBUG_ERROR, "OSDDEBUG done allocating mem map mem Entry 0x%llx\n", Entry));
+  DEBUG ((DEBUG_VERBOSE, "OSDDEBUG done allocating mem map mem Entry 0x%llx\n", Entry));
 
   return Entry;
 }
@@ -966,7 +966,7 @@ CoreConvertPagesEx (
       } else {
         // the page table code can allocate pages, so we need to free the lock ahead of time
         CoreReleaseGcdMemoryLock ();
-        DEBUG ((DEBUG_ERROR, "OSDDEBUG .10 actually setting attrs BaseAddress 0x%llx\n", BaseAddress));
+        DEBUG ((DEBUG_VERBOSE, "OSDDEBUG .10 actually setting attrs BaseAddress 0x%llx\n", BaseAddress));
         Status = gCpu->SetMemoryAttributes (
                         gCpu,
                         BaseAddress,
@@ -1859,7 +1859,7 @@ CoreGetMemoryMap (
   // Compute the buffer size needed to fit the entire map
   //
   BufferSize = Size * NumberOfEntries;
-  DEBUG ((DEBUG_ERROR, "OSDDEBUG 103 BufferSize: 0x%llx\n", BufferSize));
+  DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 103 BufferSize: 0x%llx\n", BufferSize));
 
   if (*MemoryMapSize < BufferSize) {
     Status = EFI_BUFFER_TOO_SMALL;
@@ -2052,7 +2052,7 @@ CoreGetMemoryMap (
   //
   BufferSize = ((UINT8 *)MemoryMap - (UINT8 *)MemoryMapStart);
 
-  DEBUG ((DEBUG_ERROR, "OSDDEBUG 101 BufferSize: 0x%llx\n", BufferSize));
+  DEBUG ((DEBUG_VERBOSE, "OSDDEBUG 101 BufferSize: 0x%llx\n", BufferSize));
 
   //
   // Note: Some OSs will treat EFI_MEMORY_DESCRIPTOR.Attribute as really
