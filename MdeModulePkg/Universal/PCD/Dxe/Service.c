@@ -885,15 +885,15 @@ BuildPcdDxeDataBase (
     // be NULL. If it is NULL, we just copy over the DXE Default
     // Value to PCD Database.
     //
-    PeiDatabase = (PEI_PCD_DATABASE *)GET_GUID_HOB_DATA (GuidHob);
+    PeiDatabase = (PEI_PCD_DATABASE *)AllocateCopyPool ((UINTN)GET_GUID_HOB_DATA_SIZE (GuidHob), (PEI_PCD_DATABASE *)GET_GUID_HOB_DATA (GuidHob));
 
     //
     // Get next one that stores full PEI data
     //
     GuidHob = GetNextGuidHob (&gPcdDataBaseHobGuid, GET_NEXT_HOB (GuidHob));
     if (GuidHob != NULL) {
-      mPeiPcdDbBinary = (PEI_PCD_DATABASE *)GET_GUID_HOB_DATA (GuidHob);
       mPeiPcdDbSize   = (UINTN)GET_GUID_HOB_DATA_SIZE (GuidHob);
+      mPeiPcdDbBinary = (PEI_PCD_DATABASE *)AllocateCopyPool (mPeiPcdDbSize, (PEI_PCD_DATABASE *)GET_GUID_HOB_DATA (GuidHob));
     }
 
     //

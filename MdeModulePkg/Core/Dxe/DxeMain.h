@@ -174,10 +174,18 @@ typedef struct {
   UINT64                  EndAddress;
   UINT64                  Capabilities;
   UINT64                  Attributes;
+
+  /* Efi memory type that tracks what memory is allocated here*/
+  EFI_MEMORY_TYPE         EfiMemoryType;
+
+  /* Gcd memory type that tracks what region type this is part of*/
   EFI_GCD_MEMORY_TYPE     GcdMemoryType;
   EFI_GCD_IO_TYPE         GcdIoType;
   EFI_HANDLE              ImageHandle;
   EFI_HANDLE              DeviceHandle;
+
+  /* Indicates whether this entry is stack backed memory, as in early init, or heap based */
+  BOOLEAN                 FromPages;
 } EFI_GCD_MAP_ENTRY;
 
 #define LOADED_IMAGE_PRIVATE_DATA_SIGNATURE  SIGNATURE_32('l','d','r','i')
@@ -315,10 +323,13 @@ CoreInitializePool (
 **/
 VOID
 CoreAddMemoryDescriptor (
-  IN EFI_MEMORY_TYPE       Type,
+  IN EFI_MEMORY_TYPE       EfiMemoryType,
+  IN EFI_GCD_MEMORY_TYPE   GcdMemoryType,
   IN EFI_PHYSICAL_ADDRESS  Start,
   IN UINT64                NumberOfPages,
-  IN UINT64                Attribute
+  IN UINT64                Attributes,
+  IN UINT64                Capabilities,
+  IN EFI_HANDLE            ImageHandle
   );
 
 /**
@@ -1182,6 +1193,38 @@ CoreAllocatePages (
   IN EFI_MEMORY_TYPE           MemoryType,
   IN UINTN                     NumberOfPages,
   IN OUT EFI_PHYSICAL_ADDRESS  *Memory
+  );
+
+/**
+  Internal function.  Converts a memory range to the specified type or attributes.
+  The range must exist in the memory map.  Either ChangingType or
+  ChangingAttributes must be set, but not both.
+
+  @param  Start                  The first address of the range Must be page
+                                 aligned
+  @param  NumberOfPages          The number of pages to convert
+  @param  ChangingType           Boolean indicating that type value should be changed
+  @param  NewType                The new type for the memory range
+  @param  ChangingAttributes     Boolean indicating that attributes value should be changed
+  @param  NewAttributes          The new attributes for the memory range
+
+  @retval EFI_INVALID_PARAMETER  Invalid parameter
+  @retval EFI_NOT_FOUND          Could not find a descriptor cover the specified
+                                 range  or convertion not allowed.
+  @retval EFI_SUCCESS            Successfully converts the memory range to the
+                                 specified type.
+
+**/
+EFI_STATUS
+CoreConvertPagesEx (
+  IN UINT64           Start,
+  IN UINT64           NumberOfPages,
+  IN BOOLEAN          ChangingType,
+  IN EFI_MEMORY_TYPE  NewType,
+  IN BOOLEAN          ChangingAttributes,
+  IN UINT64           NewAttributes,
+  IN BOOLEAN          ChangingCapabilities,
+  IN UINT64           NewCapabilities
   );
 
 /**
@@ -2803,6 +2846,25 @@ MergeMemoryMap (
   IN OUT EFI_MEMORY_DESCRIPTOR  *MemoryMap,
   IN OUT UINTN                  *MemoryMapSize,
   IN UINTN                      DescriptorSize
+  );
+
+VOID
+EFIAPI
+CoreDumpGcdMemorySpaceMap (
+  BOOLEAN  InitialMap
+  );
+
+/**
+  Return the memory attribute specified by Attributes
+
+  @param  Attributes             A num with some attribute bits on.
+
+  @return The enum value of memory attribute.
+
+**/
+UINT64
+ConverToCpuArchAttributes (
+  UINT64  Attributes
   );
 
 #endif

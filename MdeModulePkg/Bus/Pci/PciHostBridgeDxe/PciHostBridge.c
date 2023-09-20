@@ -558,15 +558,21 @@ InitializePciHostBridge (
         }
 
         if (ResourceAssigned) {
-          Status = gDS->AllocateMemorySpace (
-                          EfiGcdAllocateAddress,
-                          EfiGcdMemoryTypeMemoryMappedIo,
-                          0,
-                          MemApertures[MemApertureIndex]->Limit - MemApertures[MemApertureIndex]->Base + 1,
-                          &HostAddress,
-                          gImageHandle,
-                          NULL
-                          );
+          // Status = gDS->AllocateMemorySpace (
+          //                 EfiGcdAllocateAddress,
+          //                 EfiGcdMemoryTypeMemoryMappedIo,
+          //                 0,
+          //                 MemApertures[MemApertureIndex]->Limit - MemApertures[MemApertureIndex]->Base + 1,
+          //                 &HostAddress,
+          //                 gImageHandle,
+          //                 NULL
+          //                 );
+          Status = gBS->AllocatePages (
+            AllocateAddress,
+            EfiMemoryMappedIO,
+            RShiftU64 (MemApertures[MemApertureIndex]->Limit - MemApertures[MemApertureIndex]->Base + 1, EFI_PAGE_SHIFT),
+            &HostAddress
+          );
           ASSERT_EFI_ERROR (Status);
         }
       }
@@ -773,15 +779,21 @@ AllocateResource (
 
     while (BaseAddress + Length <= Limit + 1) {
       if (Mmio) {
-        Status = gDS->AllocateMemorySpace (
-                        EfiGcdAllocateAddress,
-                        EfiGcdMemoryTypeMemoryMappedIo,
-                        BitsOfAlignment,
-                        Length,
-                        &BaseAddress,
-                        gImageHandle,
-                        NULL
-                        );
+        // Status = gDS->AllocateMemorySpace (
+        //                 EfiGcdAllocateAddress,
+        //                 EfiGcdMemoryTypeMemoryMappedIo,
+        //                 BitsOfAlignment,
+        //                 Length,
+        //                 &BaseAddress,
+        //                 gImageHandle,
+        //                 NULL
+        //                 );
+        Status = gBS->AllocatePages (
+          AllocateAddress,
+          EfiMemoryMappedIO,
+          RShiftU64 (Length, EFI_PAGE_SHIFT),
+          &BaseAddress
+        );
       } else {
         Status = gDS->AllocateIoSpace (
                         EfiGcdAllocateAddress,

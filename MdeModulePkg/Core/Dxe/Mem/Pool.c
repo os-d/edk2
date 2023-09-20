@@ -312,13 +312,19 @@ CoreAllocatePoolPagesI (
   VOID        *Buffer;
   EFI_STATUS  Status;
 
-  Status = CoreAcquireLockOrFail (&gMemoryLock);
+  // we expect to have the pool lock locked when we arrive here, but as we are allocating more pages, we
+  // need to release the lock in case the page management code allocates more pool mem for GCD entries
+  ASSERT_LOCKED (&mPoolMemoryLock);
+  CoreReleaseLock (&mPoolMemoryLock);
+
+  Status = CoreAcquireLockOrFail (&mGcdMemorySpaceLock);
   if (EFI_ERROR (Status)) {
+    CoreAcquireLock (&mPoolMemoryLock);
     return NULL;
   }
 
   Buffer = CoreAllocatePoolPages (PoolType, NoPages, Granularity, NeedGuard);
-  CoreReleaseMemoryLock ();
+  CoreReleaseGcdMemoryLock ();
 
   if (Buffer != NULL) {
     if (NeedGuard) {
@@ -333,6 +339,7 @@ CoreAllocatePoolPagesI (
       );
   }
 
+  CoreAcquireLock (&mPoolMemoryLock);
   return Buffer;
 }
 
@@ -616,9 +623,9 @@ CoreFreePoolPagesI (
   IN UINTN                 NoPages
   )
 {
-  CoreAcquireMemoryLock ();
+  CoreAcquireGcdMemoryLock ();
   CoreFreePoolPages (Memory, NoPages);
-  CoreReleaseMemoryLock ();
+  CoreReleaseGcdMemoryLock ();
 
   GuardFreedPagesChecked (Memory, NoPages);
   ApplyMemoryProtectionPolicy (
@@ -783,7 +790,7 @@ CoreFreePoolI (
     NoPages  = EFI_SIZE_TO_PAGES (Size) + EFI_SIZE_TO_PAGES (Granularity) - 1;
     NoPages &= ~(UINTN)(EFI_SIZE_TO_PAGES (Granularity) - 1);
     if (IsGuarded) {
-      Head = AdjustPoolHeadF ((EFI_PHYSICAL_ADDRESS)(UINTN)Head);
+      Head = AdjustPoolHeadF ((EFI_PHYSICAL_ADDRESS)(UINTN)Head, NoPages, Size);
       CoreFreePoolPagesWithGuard (
         Pool->MemoryType,
         (EFI_PHYSICAL_ADDRESS)(UINTN)Head,

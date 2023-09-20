@@ -1052,7 +1052,9 @@ AdjustPoolHeadA (
 **/
 VOID *
 AdjustPoolHeadF (
-  IN EFI_PHYSICAL_ADDRESS  Memory
+  IN EFI_PHYSICAL_ADDRESS  Memory,
+  IN UINTN                 NoPages,
+  IN UINTN                 Size
   )
 {
   if ((Memory == 0) || (!gMps.Dxe.HeapGuard.GuardAlignedToTail)) {
@@ -1065,7 +1067,7 @@ AdjustPoolHeadF (
   //
   // Pool head is put near the tail Guard
   //
-  return (VOID *)(UINTN)(Memory & ~EFI_PAGE_MASK);
+  return (VOID *)(UINTN)(Memory + Size - EFI_PAGES_TO_SIZE (NoPages));
 }
 
 /**

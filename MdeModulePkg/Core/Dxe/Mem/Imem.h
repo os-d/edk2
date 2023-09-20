@@ -166,7 +166,6 @@ CoreInternalAllocatePages (
 // Internal Global data
 //
 
-extern EFI_LOCK    gMemoryLock;
-extern LIST_ENTRY  gMemoryMap;
+extern EFI_LOCK    mGcdMemorySpaceLock;
 extern LIST_ENTRY  mGcdMemorySpaceMap;
 #endif
