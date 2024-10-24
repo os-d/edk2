@@ -71,6 +71,7 @@
 [Packages]
   MdePkg/MdePkg.dec
   MdeModulePkg/MdeModulePkg.dec
+  DebuggerFeaturePkg/DebuggerFeaturePkg.dec
 
 [LibraryClasses]
   BaseMemoryLib
@@ -190,6 +191,7 @@
   gEfiMdeModulePkgTokenSpaceGuid.PcdCpuStackGuard                           ## CONSUMES
   gEfiMdeModulePkgTokenSpaceGuid.PcdFwVolDxeMaxEncapsulationDepth           ## CONSUMES
   gEfiMdeModulePkgTokenSpaceGuid.PcdImageLargeAddressLoad                   ## CONSUMES
+  DebuggerFeaturePkgTokenSpaceGuid.PcdForceEnableDebugger
 
 # [Hob]
 # RESOURCE_DESCRIPTOR   ## CONSUMES

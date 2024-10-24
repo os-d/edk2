@@ -49,7 +49,7 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 **/
 VOID
 EFIAPI
-_ModuleEntryPoint (
+_CModuleEntryPoint (
   IN CONST  EFI_SEC_PEI_HAND_OFF    *SecCoreData,
   IN CONST  EFI_PEI_PPI_DESCRIPTOR  *PpiList
   )
@@ -66,7 +66,7 @@ _ModuleEntryPoint (
 /**
   Required by the EBC compiler and identical in functionality to _ModuleEntryPoint().
 
-  This function is required to call _ModuleEntryPoint() passing in SecCoreData and PpiList.
+  This function is required to call _CModuleEntryPoint() passing in SecCoreData and PpiList.
 
   @param SecCoreData  Points to a data structure containing information about the PEI core's
                       operating environment, such as the size and location of temporary RAM,
@@ -89,5 +89,5 @@ EfiMain (
   IN CONST  EFI_PEI_PPI_DESCRIPTOR  *PpiList
   )
 {
-  _ModuleEntryPoint (SecCoreData, PpiList);
+  _CModuleEntryPoint (SecCoreData, PpiList);
 }

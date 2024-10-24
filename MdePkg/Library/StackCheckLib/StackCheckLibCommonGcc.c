@@ -33,6 +33,7 @@ __stack_chk_fail (
   )
 {
   DEBUG ((DEBUG_ERROR, "Stack cookie check failed at address 0x%llx!\n", RETURN_ADDRESS (0)));
+  ASSERT (FALSE);
   StackCheckFailureHook (RETURN_ADDRESS (0));
   TriggerStackCookieInterrupt ();
 }

@@ -31,6 +31,8 @@
   #
   NULL|MdePkg/Library/CompilerIntrinsicsLib/CompilerIntrinsicsLib.inf
 
+
+!ifndef CUSTOM_STACK_CHECK_LIB
 #
 # Stack Cookies cannot be generically applied to SEC modules because they may not define _ModuleEntryPoint and when we
 # link a library in, we have to be able to define the entry point. SEC modules that do define _ModuleEntryPoint can
@@ -40,6 +42,24 @@
 # DSC being built is providing it's own implementation of StackCheckLib.
 #
 [LibraryClasses.common.PEI_CORE, LibraryClasses.common.PEIM, LibraryClasses.common.DXE_CORE, LibraryClasses.common.SMM_CORE, LibraryClasses.common.MM_CORE_STANDALONE, LibraryClasses.common.DXE_DRIVER, LibraryClasses.common.DXE_RUNTIME_DRIVER, LibraryClasses.common.DXE_SMM_DRIVER, LibraryClasses.common.MM_STANDALONE, LibraryClasses.common.UEFI_DRIVER, LibraryClasses.common.UEFI_APPLICATION]
-!ifndef CUSTOM_STACK_CHECK_LIB
   NULL|MdePkg/Library/StackCheckLibNull/StackCheckLibNull.inf
+
+[LibraryClasses.common.PEI_CORE]
+  StackCheckEntryPointLib|MdePkg/Library/PeiCoreEntryPoint/PeiCoreStackCheckEntryPointLibNull.inf
+
+[LibraryClasses.common.PEIM]
+  StackCheckEntryPointLib|MdePkg/Library/PeimEntryPoint/PeimStackCheckEntryPointLibNull.inf
+
+[LibraryClasses.common.UEFI_APPLICATION]
+  StackCheckEntryPointLib|MdePkg/Library/UefiApplicationEntryPoint/UefiApplicationStackCheckEntryPointLibNull.inf
+
+[LibraryClasses.common.DXE_DRIVER, LibraryClasses.common.DXE_RUNTIME_DRIVER, LibraryClasses.common.DXE_SMM_DRIVER, LibraryClasses.common.UEFI_DRIVER, LibraryClasses.common.SMM_CORE]
+  StackCheckEntryPointLib|MdePkg/Library/UefiDriverEntryPoint/UefiDriverStackCheckEntryPointLibNull.inf
+
+[LibraryClasses.common.MM_STANDALONE]
+  StackCheckEntryPointLib|MdePkg/Library/StandaloneMmDriverEntryPoint/StandaloneMmDriverStackCheckEntryPointLibNull.inf
+
+[LibraryClasses.common.DXE_CORE]
+  StackCheckEntryPointLib|MdePkg/Library/DxeCoreEntryPoint/DxeCoreStackCheckEntryPointLibNull.inf
+
 !endif

@@ -26,7 +26,7 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 **/
 EFI_STATUS
 EFIAPI
-_ModuleEntryPoint (
+_CModuleEntryPoint (
   IN EFI_PEI_FILE_HANDLE     FileHandle,
   IN CONST EFI_PEI_SERVICES  **PeiServices
   )
@@ -68,5 +68,5 @@ EfiMain (
   IN CONST EFI_PEI_SERVICES  **PeiServices
   )
 {
-  return _ModuleEntryPoint (FileHandle, PeiServices);
+  return _CModuleEntryPoint (FileHandle, PeiServices);
 }

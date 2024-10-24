@@ -36,6 +36,7 @@
   BaseLib
   DebugLib
   MmServicesTableLib
+  StackCheckEntryPointLib
 
 [Protocols]
   gEfiLoadedImageProtocolGuid      ## SOMETIMES_CONSUMES

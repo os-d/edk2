@@ -205,8 +205,10 @@ class PlatformBuilder( UefiBuilder, BuildSettingsManager):
         cmd = "qemu-system-x86_64"
         args  = "-debugcon stdio"                                           # write messages to stdio
         args += " -global isa-debugcon.iobase=0x402"                        # debug messages out thru virtual io port
+        args += " -serial tcp:127.0.0.1:50001,server,nowait"                # connect to port 4444
         args += " -net none"                                                # turn off network
         args += " -smp 4"
+        args += " -cpu qemu64,+rdrand"
         args += f" -drive file=fat:rw:{VirtualDrive},format=raw,media=disk" # Mount disk with startup.nsh
         # Provides Rng services to the Guest VM
         args += " -device virtio-rng-pci"

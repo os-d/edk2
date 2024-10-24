@@ -40,6 +40,7 @@
 [LibraryClasses]
   BaseLib
   DebugLib
+  StackCheckEntryPointLib
 
 [LibraryClasses.ARM, LibraryClasses.AARCH64]
   StandaloneMmMmuLib

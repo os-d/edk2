@@ -31,7 +31,7 @@ VOID  *gHobList = NULL;
 **/
 VOID
 EFIAPI
-_ModuleEntryPoint (
+_CModuleEntryPoint (
   IN VOID  *HobStart
   )
 {
