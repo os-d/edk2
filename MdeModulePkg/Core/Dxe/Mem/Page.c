@@ -820,6 +820,8 @@ CoreAddMemoryDescriptor (
   @param  NewType                The new type for the memory range
   @param  ChangingAttributes     Boolean indicating that attributes value should be changed
   @param  NewAttributes          The new attributes for the memory range
+  @param  MemoryWriteable        The memory range is writeable or not. This is only used for DEBUG_CLEAR_MEMORY when
+                                 changing type to EfiConventionalMemory.
 
   @retval EFI_INVALID_PARAMETER  Invalid parameter
   @retval EFI_NOT_FOUND          Could not find a descriptor cover the specified
@@ -835,7 +837,8 @@ CoreConvertPagesEx (
   IN BOOLEAN          ChangingType,
   IN EFI_MEMORY_TYPE  NewType,
   IN BOOLEAN          ChangingAttributes,
-  IN UINT64           NewAttributes
+  IN UINT64           NewAttributes,
+  IN BOOLEAN          MemoryWriteable
   )
 {
   UINT64           NumberOfBytes;
@@ -1033,12 +1036,8 @@ CoreConvertPagesEx (
       // macro will ASSERT() if address is 0.  Instead, CoreAddRange() guarantees
       // that the page starting at address 0 is always filled with zeros.
       //
-      if (Start == 0) {
-        if (RangeEnd > EFI_PAGE_SIZE) {
-          DEBUG_CLEAR_MEMORY ((VOID *)(UINTN)EFI_PAGE_SIZE, (UINTN)(RangeEnd - EFI_PAGE_SIZE + 1));
-        }
-      } else {
-        DEBUG_CLEAR_MEMORY ((VOID *)(UINTN)Start, (UINTN)(RangeEnd - Start + 1));
+      if ((RangeEnd > EFI_PAGE_SIZE) && MemoryWriteable) {
+        DEBUG_CLEAR_MEMORY ((VOID *)(UINTN)MAX (Start, EFI_PAGE_SIZE), (UINTN)(RangeEnd - MAX (Start, EFI_PAGE_SIZE) + 1));
       }
     }
 
@@ -1068,6 +1067,8 @@ CoreConvertPagesEx (
                                  aligned
   @param  NumberOfPages          The number of pages to convert
   @param  NewType                The new type for the memory range
+  @param  MemoryWriteable        The memory range is writeable or not. This is only used for DEBUG_CLEAR_MEMORY when
+                                 changing type to EfiConventionalMemory.
 
   @retval EFI_INVALID_PARAMETER  Invalid parameter
   @retval EFI_NOT_FOUND          Could not find a descriptor cover the specified
@@ -1080,10 +1081,11 @@ EFI_STATUS
 CoreConvertPages (
   IN UINT64           Start,
   IN UINT64           NumberOfPages,
-  IN EFI_MEMORY_TYPE  NewType
+  IN EFI_MEMORY_TYPE  NewType,
+  IN BOOLEAN          MemoryWriteable
   )
 {
-  return CoreConvertPagesEx (Start, NumberOfPages, TRUE, NewType, FALSE, 0);
+  return CoreConvertPagesEx (Start, NumberOfPages, TRUE, NewType, FALSE, 0, MemoryWriteable);
 }
 
 /**
@@ -1107,7 +1109,7 @@ CoreUpdateMemoryAttributes (
   //
   // Update the attributes to the new value
   //
-  CoreConvertPagesEx (Start, NumberOfPages, FALSE, (EFI_MEMORY_TYPE)0, TRUE, NewAttributes);
+  CoreConvertPagesEx (Start, NumberOfPages, FALSE, (EFI_MEMORY_TYPE)0, TRUE, NewAttributes, FALSE);
 
   CoreReleaseMemoryLock ();
 }
@@ -1536,9 +1538,9 @@ CoreInternalAllocatePages (
   // Convert pages from FreeMemory to the requested type
   //
   if (NeedGuard) {
-    Status = CoreConvertPagesWithGuard (Start, NumberOfPages, MemoryType);
+    Status = CoreConvertPagesWithGuard (Start, NumberOfPages, MemoryType, FALSE);
   } else {
-    Status = CoreConvertPages (Start, NumberOfPages, MemoryType);
+    Status = CoreConvertPages (Start, NumberOfPages, MemoryType, FALSE);
   }
 
   if (EFI_ERROR (Status)) {
@@ -1548,9 +1550,9 @@ CoreInternalAllocatePages (
     //
     if (PromoteMemoryResource ()) {
       if (NeedGuard) {
-        Status = CoreConvertPagesWithGuard (Start, NumberOfPages, MemoryType);
+        Status = CoreConvertPagesWithGuard (Start, NumberOfPages, MemoryType, FALSE);
       } else {
-        Status = CoreConvertPages (Start, NumberOfPages, MemoryType);
+        Status = CoreConvertPages (Start, NumberOfPages, MemoryType, FALSE);
       }
     }
   }
@@ -1648,11 +1650,23 @@ CoreInternalFreePages (
   OUT EFI_MEMORY_TYPE      *MemoryType OPTIONAL
   )
 {
-  EFI_STATUS  Status;
-  LIST_ENTRY  *Link;
-  MEMORY_MAP  *Entry;
-  UINTN       Alignment;
-  BOOLEAN     IsGuarded;
+  EFI_STATUS                       Status;
+  LIST_ENTRY                       *Link;
+  MEMORY_MAP                       *Entry;
+  UINTN                            Alignment;
+  BOOLEAN                          IsGuarded;
+  EFI_GCD_MEMORY_SPACE_DESCRIPTOR  Descriptor;
+  BOOLEAN                          MemoryWriteable;
+  UINT64                           CurrentAddress;
+  UINT64                           EndAddress;
+  UINT64                           DescEnd;
+  UINT64                           CurrentLength;
+
+  MemoryWriteable = FALSE;
+
+  if (NumberOfPages == 0) {
+    return EFI_INVALID_PARAMETER;
+  }
 
   //
   // Free the range
@@ -1706,14 +1720,84 @@ CoreInternalFreePages (
 
   IsGuarded = IsPageTypeToGuard (Entry->Type, AllocateAnyPages) &&
               IsMemoryGuarded (Memory);
+
+  // The free pages code will attempt to zero the freed pages if DebugClearMemory is enabled. However, there is no
+  // guarantee that the memory is writeable, which can cause the core to crash. So, we need to check if the memory is
+  // writeable before we attempt to zero it. We must do this outside of the memory lock to avoid deadlocks going
+  // through the GCD, which may cause page allocations to occur. It is safe to call the GCD from here, because the
+  // GCD only uses pool backed memory and CoreFreePoolPages() does not call through this path, so we won't hit a
+  // deadlock on the GCD lock. We don't attempt to call this before gCpu is initialized, because before that point,
+  // page attributes can't be set anyway and we may be very early in GCD init and not have the GCD populated yet.
+  if (DebugClearMemoryEnabled () && (gCpu != NULL)) {
+    // now we drop the lock to avoid deadlocks when debug clearing memory, this is safe to do because even if an
+    // interrupt came in and changed the memory map, it would be a bug if it was for this region (since it is being
+    // freed) and the only reason we took the lock now was to parse the list, which we are done with for now)
+    CoreReleaseMemoryLock ();
+    CurrentAddress = Memory;
+    EndAddress     = Memory + EFI_PAGES_TO_SIZE (NumberOfPages);
+    Status         = EFI_SUCCESS;
+    while (CurrentAddress < EndAddress) {
+      Status = CoreGetMemorySpaceDescriptor (
+                 CurrentAddress,
+                 &Descriptor
+                 );
+
+      if (EFI_ERROR (Status)) {
+        break;
+      }
+
+      DescEnd = Descriptor.BaseAddress + Descriptor.Length;
+      // ensure that we only change the attributes for the range that we are interested in, not the entire descriptor,
+      // we may also be in the middle of a descriptor, so ensure our length is not larger than the descriptor length
+      if (EndAddress > DescEnd) {
+        CurrentLength = DescEnd - CurrentAddress;
+      } else {
+        CurrentLength = EndAddress - CurrentAddress;
+      }
+
+      // we always set the attributes here, don't check the descriptor attributes, because they may be out of sync
+      // if the attributes were changed with the CPU arch protocol or the memory attribute protocol
+      Status = CoreSetMemorySpaceAttributes (
+                 CurrentAddress,
+                 CurrentLength,
+                 (Descriptor.Attributes & (~(EFI_MEMORY_RO | EFI_MEMORY_RP)))
+                 );
+
+      if (EFI_ERROR (Status)) {
+        break;
+      }
+
+      // we may have started in the middle of a descriptor, so we need to move to the beginning of the next descriptor,
+      // or the end of the range, whichever is smaller
+      CurrentAddress += CurrentLength;
+    }
+
+    // if any step failed, we will skip the debug clear memory
+    if (EFI_ERROR (Status)) {
+      DEBUG ((
+        DEBUG_ERROR,
+        "%a: failed to set memory attributes for %llx with %llx pages, will not debug clear memory\n",
+        __func__,
+        Memory,
+        NumberOfPages
+        ));
+      ASSERT_EFI_ERROR (Status);
+    } else {
+      MemoryWriteable = TRUE;
+    }
+
+    CoreAcquireMemoryLock ();
+  }
+
   if (IsGuarded) {
     Status = CoreConvertPagesWithGuard (
                Memory,
                NumberOfPages,
-               EfiConventionalMemory
+               EfiConventionalMemory,
+               MemoryWriteable
                );
   } else {
-    Status = CoreConvertPages (Memory, NumberOfPages, EfiConventionalMemory);
+    Status = CoreConvertPages (Memory, NumberOfPages, EfiConventionalMemory, MemoryWriteable);
   }
 
 Done:
@@ -2220,9 +2304,9 @@ CoreAllocatePoolPages (
     DEBUG ((DEBUG_ERROR | DEBUG_PAGE, "AllocatePoolPages: failed to allocate %d pages\n", (UINT32)NumberOfPages));
   } else {
     if (NeedGuard) {
-      CoreConvertPagesWithGuard (Start, NumberOfPages, PoolType);
+      CoreConvertPagesWithGuard (Start, NumberOfPages, PoolType, FALSE);
     } else {
-      CoreConvertPages (Start, NumberOfPages, PoolType);
+      CoreConvertPages (Start, NumberOfPages, PoolType, FALSE);
     }
   }
 
@@ -2242,7 +2326,7 @@ CoreFreePoolPages (
   IN UINTN                 NumberOfPages
   )
 {
-  CoreConvertPages (Memory, NumberOfPages, EfiConventionalMemory);
+  CoreConvertPages (Memory, NumberOfPages, EfiConventionalMemory, TRUE);
 }
 
 /**

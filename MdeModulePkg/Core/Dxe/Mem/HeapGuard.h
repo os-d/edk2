@@ -178,6 +178,8 @@ typedef struct {
                                  aligned.
   @param  NumberOfPages          The number of pages to convert.
   @param  NewType                The new type for the memory range.
+  @param  MemoryWriteable        The memory range is writeable or not. This is only used for DEBUG_CLEAR_MEMORY when
+                                 changing type to EfiConventionalMemory.
 
   @retval EFI_INVALID_PARAMETER  Invalid parameter.
   @retval EFI_NOT_FOUND          Could not find a descriptor cover the specified
@@ -190,7 +192,8 @@ EFI_STATUS
 CoreConvertPages (
   IN UINT64           Start,
   IN UINT64           NumberOfPages,
-  IN EFI_MEMORY_TYPE  NewType
+  IN EFI_MEMORY_TYPE  NewType,
+  IN BOOLEAN          MemoryWriteable
   );
 
 /**
@@ -199,6 +202,8 @@ CoreConvertPages (
   @param[in]  Start           Start address of memory to allocate or free.
   @param[in]  NumberOfPages   Memory size in pages.
   @param[in]  NewType         Memory type to convert to.
+  @param[in]  MemoryWriteable The memory range is writeable or not. This is only used for DEBUG_CLEAR_MEMORY when
+                              changing type to EfiConventionalMemory.
 
   @return VOID.
 **/
@@ -206,7 +211,8 @@ EFI_STATUS
 CoreConvertPagesWithGuard (
   IN UINT64           Start,
   IN UINTN            NumberOfPages,
-  IN EFI_MEMORY_TYPE  NewType
+  IN EFI_MEMORY_TYPE  NewType,
+  IN BOOLEAN          MemoryWriteable
   );
 
 /**
