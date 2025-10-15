@@ -23,25 +23,19 @@ VirtMmHwMemAttr (
   )
 {
   EFI_STATUS  Status;
+  UINT64      Attributes;                           // [CODE_FIRST] XXXX
+                                                    // [CODE_FIRST] XXXX
+  Attributes = EFI_MEMORY_UC | EFI_MEMORY_RUNTIME;  // [CODE_FIRST] XXXX
 
-  Status = gDS->AddMemorySpace (
+  Status = gDS->AddMemorySpaceV2 (                  // [CODE_FIRST] XXXX
                   EfiGcdMemoryTypeMemoryMappedIo,
                   mUefiVarsAddr,
                   EFI_PAGE_SIZE,
-                  EFI_MEMORY_UC | EFI_MEMORY_RUNTIME
+                  Attributes,                       // [CODE_FIRST] XXXX
+                  Attributes                        // [CODE_FIRST] XXXX
                   );
   if (EFI_ERROR (Status)) {
-    DEBUG ((DEBUG_ERROR, "%a: AddMemorySpace failed: %r\n", __func__, Status));
-    return RETURN_UNSUPPORTED;
-  }
-
-  Status = gDS->SetMemorySpaceAttributes (
-                  mUefiVarsAddr,
-                  EFI_PAGE_SIZE,
-                  EFI_MEMORY_UC | EFI_MEMORY_RUNTIME
-                  );
-  if (EFI_ERROR (Status)) {
-    DEBUG ((DEBUG_ERROR, "%a: SetMemorySpaceAttributes failed: %r\n", __func__, Status));
+    DEBUG ((DEBUG_ERROR, "%a: AddMemorySpaceV2 failed: %r\n", __func__, Status)); // [CODE_FIRST] XXXX
     return RETURN_UNSUPPORTED;
   }
 

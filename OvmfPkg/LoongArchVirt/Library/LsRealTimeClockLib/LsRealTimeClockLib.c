@@ -216,12 +216,16 @@ MapRtcResources (
   )
 {
   EFI_STATUS  Status;
+  UINT64      Attributes;                           // [CODE_FIRST] XXXX
+                                                    // [CODE_FIRST] XXXX
+  Attributes = EFI_MEMORY_UC | EFI_MEMORY_RUNTIME;  // [CODE_FIRST] XXXX
 
-  Status = gDS->AddMemorySpace (
+  Status = gDS->AddMemorySpaceV2 (                  // [CODE_FIRST] XXXX
                   EfiGcdMemoryTypeMemoryMappedIo,
                   RtcPageBase,
                   EFI_PAGE_SIZE,
-                  EFI_MEMORY_UC | EFI_MEMORY_RUNTIME
+                  Attributes,                       // [CODE_FIRST] XXXX
+                  Attributes                        // [CODE_FIRST] XXXX
                   );
   if (EFI_ERROR (Status)) {
     DEBUG ((
@@ -247,30 +251,6 @@ MapRtcResources (
       "Failed to allocate memory space. Status = %r\n",
       Status
       ));
-    gDS->RemoveMemorySpace (
-           RtcPageBase,
-           EFI_PAGE_SIZE
-           );
-    return Status;
-  }
-
-  Status = gDS->SetMemorySpaceAttributes (
-                  RtcPageBase,
-                  EFI_PAGE_SIZE,
-                  EFI_MEMORY_UC | EFI_MEMORY_RUNTIME
-                  );
-  if (EFI_ERROR (Status)) {
-    DEBUG ((
-      DEBUG_ERROR,
-      "Failed to set memory attributes. Status = %r\n",
-      Status
-      ));
-
-    gDS->FreeMemorySpace (
-           RtcPageBase,
-           EFI_PAGE_SIZE
-           );
-
     gDS->RemoveMemorySpace (
            RtcPageBase,
            EFI_PAGE_SIZE

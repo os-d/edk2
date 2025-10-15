@@ -171,11 +171,12 @@ MarkIoMemoryRangeForRuntimeAccess (
                   Length
                   );
 
-  Status = gDS->AddMemorySpace (
+  Status = gDS->AddMemorySpaceV2 (                     // [CODE_FIRST] XXXX
                   EfiGcdMemoryTypeMemoryMappedIo,
                   BaseAddress,
                   Length,
-                  EFI_MEMORY_UC | EFI_MEMORY_RUNTIME
+                  EFI_MEMORY_UC | EFI_MEMORY_RUNTIME,  // [CODE_FIRST] XXXX
+                  EFI_MEMORY_RUNTIME                   // [CODE_FIRST] XXXX
                   );
   ASSERT_EFI_ERROR (Status);
 
@@ -187,16 +188,6 @@ MarkIoMemoryRangeForRuntimeAccess (
                   &BaseAddress,
                   gImageHandle,
                   NULL
-                  );
-  ASSERT_EFI_ERROR (Status);
-
-  Status = gDS->GetMemorySpaceDescriptor (BaseAddress, &GcdDescriptor);
-  ASSERT_EFI_ERROR (Status);
-
-  Status = gDS->SetMemorySpaceAttributes (
-                  BaseAddress,
-                  Length,
-                  GcdDescriptor.Attributes | EFI_MEMORY_RUNTIME
                   );
   ASSERT_EFI_ERROR (Status);
 

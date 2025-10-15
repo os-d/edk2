@@ -208,26 +208,15 @@ PlatformFlashAccessLibConstructor (
   VOID
   )
 {
-  EFI_STATUS  Status;
-
   //
   // map the code flash region, the data flash region
   // already mapped via variable driver
   //
-  Status = gDS->AddMemorySpace (
-                  EfiGcdMemoryTypeMemoryMappedIo,
-                  FLASH_CODE_BASE,
-                  SIZE_32MB,
-                  EFI_MEMORY_UC
-                  );
-  if (!EFI_ERROR (Status)) {
-    Status = gDS->SetMemorySpaceAttributes (
-                    FLASH_CODE_BASE,
-                    SIZE_32MB,
-                    EFI_MEMORY_UC
-                    );
-    ASSERT_EFI_ERROR (Status);
-  }
-
-  return EFI_SUCCESS;
+  return gDS->AddMemorySpaceV2 (                // [CODE_FIRST] XXXX
+                EfiGcdMemoryTypeMemoryMappedIo, // [CODE_FIRST] XXXX
+                FLASH_CODE_BASE,                // [CODE_FIRST] XXXX
+                SIZE_32MB,                      // [CODE_FIRST] XXXX
+                EFI_MEMORY_UC,                  // [CODE_FIRST] XXXX
+                EFI_MEMORY_UC                   // [CODE_FIRST] XXXX
+                );                              // [CODE_FIRST] XXXX
 }
