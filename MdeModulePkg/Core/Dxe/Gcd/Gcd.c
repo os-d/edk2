@@ -1736,6 +1736,130 @@ CoreSetMemorySpaceCapabilities (
   return CoreConvertSpace (GCD_SET_CAPABILITIES_MEMORY_OPERATION, (EFI_GCD_MEMORY_TYPE)0, (EFI_GCD_IO_TYPE)0, BaseAddress, Length, Capabilities, 0);
 }
 
+/**                                                                                                 // [CODE_FIRST] XXXX
+  Adds reserved memory, system memory, or memory-mapped I/O resources to the                        // [CODE_FIRST] XXXX
+  global coherency domain of the processor with the attributes specified.                           // [CODE_FIRST] XXXX
+                                                                                                    // [CODE_FIRST] XXXX
+  @param  GcdMemoryType    The type of memory resource being added.                                 // [CODE_FIRST] XXXX
+  @param  BaseAddress      The physical address that is the start address                           // [CODE_FIRST] XXXX
+                           of the memory resource being added.                                      // [CODE_FIRST] XXXX
+  @param  Length           The size, in bytes, of the memory resource that                          // [CODE_FIRST] XXXX
+                           is being added.                                                          // [CODE_FIRST] XXXX
+  @param  Capabilities     The bit mask of attributes that the memory                               // [CODE_FIRST] XXXX
+                           resource region supports.                                                // [CODE_FIRST] XXXX
+  @param  Attributes       The bit mask of attributes to set for the memory region.                 // [CODE_FIRST] XXXX
+                                                                                                    // [CODE_FIRST] XXXX
+  @retval EFI_SUCCESS            The memory resource was added to the global                        // [CODE_FIRST] XXXX
+                                 coherency domain of the processor.                                 // [CODE_FIRST] XXXX
+  @retval EFI_INVALID_PARAMETER  GcdMemoryType is invalid.                                          // [CODE_FIRST] XXXX
+  @retval EFI_INVALID_PARAMETER  Length is zero.                                                    // [CODE_FIRST] XXXX
+  @retval EFI_OUT_OF_RESOURCES   There are not enough system resources to add                       // [CODE_FIRST] XXXX
+                                 the memory resource to the global coherency                        // [CODE_FIRST] XXXX
+                                 domain of the processor.                                           // [CODE_FIRST] XXXX
+  @retval EFI_UNSUPPORTED        The processor does not support one or more bytes                   // [CODE_FIRST] XXXX
+                                 of the memory resource range specified by                          // [CODE_FIRST] XXXX
+                                 BaseAddress and Length.                                            // [CODE_FIRST] XXXX
+  @retval EFI_ACCESS_DENIED      One or more bytes of the memory resource range                     // [CODE_FIRST] XXXX
+                                 specified by BaseAddress and Length conflicts                      // [CODE_FIRST] XXXX
+                                 with a memory resource range that was previously                   // [CODE_FIRST] XXXX
+                                 added to the global coherency domain of the processor.             // [CODE_FIRST] XXXX
+  @retval EFI_ACCESS_DENIED      One or more bytes of the memory resource range                     // [CODE_FIRST] XXXX
+                                 specified by BaseAddress and Length was allocated                  // [CODE_FIRST] XXXX
+                                 in a prior call to AllocateMemorySpace().                          // [CODE_FIRST] XXXX
+  @retval EFI_UNSUPPORTED        The bit mask of attributes is not support for the memory resource  // [CODE_FIRST] XXXX
+                                 range specified by BaseAddress and Length.                         // [CODE_FIRST] XXXX
+  @retval EFI_ACCESS_DENIED      The attributes for the memory resource range specified by          // [CODE_FIRST] XXXX
+                                 BaseAddress and Length cannot be modified.                         // [CODE_FIRST] XXXX
+                                                                                                    // [CODE_FIRST] XXXX
+**/                                                                                                 // [CODE_FIRST] XXXX
+EFI_STATUS                                                                                          // [CODE_FIRST] XXXX
+EFIAPI                                                                                              // [CODE_FIRST] XXXX
+CoreAddMemorySpaceV2 (                                                                              // [CODE_FIRST] XXXX
+  IN EFI_GCD_MEMORY_TYPE   GcdMemoryType,                                                           // [CODE_FIRST] XXXX
+  IN EFI_PHYSICAL_ADDRESS  BaseAddress,                                                             // [CODE_FIRST] XXXX
+  IN UINT64                Length,                                                                  // [CODE_FIRST] XXXX
+  IN UINT64                Capabilities,                                                            // [CODE_FIRST] XXXX
+  IN UINT64                Attributes                                                               // [CODE_FIRST] XXXX
+  )                                                                                                 // [CODE_FIRST] XXXX
+{                                                                                                   // [CODE_FIRST] XXXX
+  EFI_STATUS            Status;                                                                     // [CODE_FIRST] XXXX
+  EFI_PHYSICAL_ADDRESS  PageBaseAddress;                                                            // [CODE_FIRST] XXXX
+  UINT64                PageLength;                                                                 // [CODE_FIRST] XXXX
+                                                                                                    // [CODE_FIRST] XXXX 
+  Status = CoreInternalAddMemorySpace (GcdMemoryType, BaseAddress, Length, Capabilities);           // [CODE_FIRST] XXXX
+                                                                                                    // [CODE_FIRST] XXXX
+  if (EFI_ERROR (Status)) {                                                                         // [CODE_FIRST] XXXX
+    return Status;                                                                                  // [CODE_FIRST] XXXX
+  }                                                                                                 // [CODE_FIRST] XXXX
+                                                                                                    // [CODE_FIRST] XXXX
+  Status = CoreSetMemorySpaceAttributes (BaseAddress, Length, Attributes);                          // [CODE_FIRST] XXXX
+                                                                                                    // [CODE_FIRST] XXXX
+  if (Status == EFI_NOT_AVAILABLE_YET) {                                                            // [CODE_FIRST] XXXX
+    //                                                                                              // [CODE_FIRST] XXXX
+    // If CPU Architectural Protocol is not available yet, ignore the error                         // [CODE_FIRST] XXXX
+    // because the attributes will be set later when CPU Architectural Protocol                     // [CODE_FIRST] XXXX
+    // is installed.                                                                                // [CODE_FIRST] XXXX
+    //                                                                                              // [CODE_FIRST] XXXX
+    Status = EFI_SUCCESS;                                                                           // [CODE_FIRST] XXXX
+  } else if (EFI_ERROR (Status)) {                                                                  // [CODE_FIRST] XXXX
+    DEBUG ((DEBUG_ERROR, "CoreAddMemorySpaceV2: Failed to set attributes - %r\n", Status));         // [CODE_FIRST] XXXX
+    ASSERT_EFI_ERROR (Status);                                                                      // [CODE_FIRST] XXXX
+    //                                                                                              // [CODE_FIRST] XXXX
+    // If failed to set attributes, remove the memory space added before.                           // [CODE_FIRST] XXXX
+    //                                                                                              // [CODE_FIRST] XXXX
+    CoreRemoveMemorySpace (BaseAddress, Length);                                                    // [CODE_FIRST] XXXX
+    return Status;                                                                                  // [CODE_FIRST] XXXX
+  }                                                                                                 // [CODE_FIRST] XXXX
+                                                                                                    // [CODE_FIRST] XXXX   
+  if (((GcdMemoryType == EfiGcdMemoryTypeSystemMemory) ||                                           // [CODE_FIRST] XXXX
+  (GcdMemoryType == EfiGcdMemoryTypeMoreReliable))) {                                               // [CODE_FIRST] XXXX
+    PageBaseAddress = PageAlignAddress (BaseAddress);                                               // [CODE_FIRST] XXXX
+    PageLength      = PageAlignLength (BaseAddress + Length - PageBaseAddress);                     // [CODE_FIRST] XXXX
+                                                                                                    // [CODE_FIRST] XXXX
+    Status = CoreAllocateMemorySpace (                                                              // [CODE_FIRST] XXXX
+               EfiGcdAllocateAddress,                                                               // [CODE_FIRST] XXXX
+               GcdMemoryType,                                                                       // [CODE_FIRST] XXXX
+               EFI_PAGE_SHIFT,                                                                      // [CODE_FIRST] XXXX
+               PageLength,                                                                          // [CODE_FIRST] XXXX
+               &PageBaseAddress,                                                                    // [CODE_FIRST] XXXX
+               gDxeCoreImageHandle,                                                                 // [CODE_FIRST] XXXX
+               NULL                                                                                 // [CODE_FIRST] XXXX
+               );                                                                                   // [CODE_FIRST] XXXX
+                                                                                                    // [CODE_FIRST] XXXX
+    if (!EFI_ERROR (Status)) {                                                                      // [CODE_FIRST] XXXX
+      CoreAddMemoryDescriptor (                                                                     // [CODE_FIRST] XXXX
+        EfiConventionalMemory,                                                                      // [CODE_FIRST] XXXX
+        PageBaseAddress,                                                                            // [CODE_FIRST] XXXX
+        RShiftU64 (PageLength, EFI_PAGE_SHIFT),                                                     // [CODE_FIRST] XXXX
+        Capabilities                                                                                // [CODE_FIRST] XXXX
+        );                                                                                          // [CODE_FIRST] XXXX
+    } else {                                                                                        // [CODE_FIRST] XXXX
+      for ( ; PageLength != 0; PageLength -= EFI_PAGE_SIZE, PageBaseAddress += EFI_PAGE_SIZE) {     // [CODE_FIRST] XXXX
+        Status = CoreAllocateMemorySpace (                                                          // [CODE_FIRST] XXXX
+                   EfiGcdAllocateAddress,                                                           // [CODE_FIRST] XXXX
+                   GcdMemoryType,                                                                   // [CODE_FIRST] XXXX
+                   EFI_PAGE_SHIFT,                                                                  // [CODE_FIRST] XXXX
+                   EFI_PAGE_SIZE,                                                                   // [CODE_FIRST] XXXX
+                   &PageBaseAddress,                                                                // [CODE_FIRST] XXXX
+                   gDxeCoreImageHandle,                                                             // [CODE_FIRST] XXXX
+                   NULL                                                                             // [CODE_FIRST] XXXX
+                   );                                                                               // [CODE_FIRST] XXXX
+                                                                                                    // [CODE_FIRST] XXXX
+        if (!EFI_ERROR (Status)) {                                                                  // [CODE_FIRST] XXXX
+          CoreAddMemoryDescriptor (                                                                 // [CODE_FIRST] XXXX
+            EfiConventionalMemory,                                                                  // [CODE_FIRST] XXXX
+            PageBaseAddress,                                                                        // [CODE_FIRST] XXXX
+            1,                                                                                      // [CODE_FIRST] XXXX
+            Capabilities                                                                            // [CODE_FIRST] XXXX
+            );                                                                                      // [CODE_FIRST] XXXX
+        }                                                                                           // [CODE_FIRST] XXXX
+      }                                                                                             // [CODE_FIRST] XXXX
+    }                                                                                               // [CODE_FIRST] XXXX
+  }                                                                                                 // [CODE_FIRST] XXXX
+                                                                                                    // [CODE_FIRST] XXXX
+  return Status;                                                                                    // [CODE_FIRST] XXXX
+}                                                                                                   // [CODE_FIRST] XXXX
+
 /**
   Returns a map of the memory resources in the global coherency domain of the
   processor.
