@@ -150,9 +150,21 @@
 #define VECTOR_ENTRY(tbl, off)    \
   .org off
 
+//
+// PE targets (i.e. building with CLANGPDB) do not support the ELF style
+// .previous directive and so we need to manually define the section again.
+//
+#ifdef __ELF__
+#define _PREVIOUS_SECTION()  .previous
+#else // __ELF__
+#define _PREVIOUS_SECTION() \
+  .section.text. ## tbl ## , "ax";    \
+  .align 3
+#endif // __ELF__
+
 #define VECTOR_END(tbl)           \
   .org 0x800;                     \
-  .previous
+  _PREVIOUS_SECTION()
 
 VOID
 EFIAPI
