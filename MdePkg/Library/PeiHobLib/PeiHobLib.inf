@@ -41,6 +41,10 @@
   gEfiHobMemoryAllocStackGuid                   ## SOMETIMES_PRODUCES ## HOB # MemoryAllocation StackHob
   gEfiHobMemoryAllocBspStoreGuid                ## SOMETIMES_PRODUCES ## HOB # MemoryAllocation BspStoreHob
   gEfiHobMemoryAllocModuleGuid                  ## SOMETIMES_PRODUCES ## HOB # MemoryAllocation ModuleHob
+  gEfiMemoryTypeInformationGuid                 ## CONSUMES
+
+[Ppis]
+  gMemoryTypeInformationHobAvailablePpiGuid     ## SOMETIMES_PRODUCES
 
 #
 # [Hob]

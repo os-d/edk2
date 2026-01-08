@@ -7,6 +7,7 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 **/
 
 #include "PeiMain.h"
+#include <Guid/MemoryTypeInformation.h>
 
 /**
 
@@ -27,6 +28,11 @@ InitializeMemoryServices (
   IN PEI_CORE_INSTANCE           *OldCoreData
   )
 {
+  VOID *HobList;
+  EFI_PEI_HOB_POINTERS NextHob;
+  EFI_STATUS          Status;
+  BOOLEAN             FoundMemoryTypeInfoHob = FALSE;
+
   PrivateData->SwitchStackSignal = FALSE;
 
   //
@@ -47,6 +53,40 @@ InitializeMemoryServices (
     // Set Ps to point to ServiceTableShadow in Cache
     //
     PrivateData->Ps = &(PrivateData->ServiceTableShadow);
+  } else {
+    // We have permanent memory now, so we should set up the memory bins if we can find the HOB
+    // describing the memory type information. If we can't find it now, we'll register a callback
+    // on the discovery PPI to set it up later when the HOB is created.
+    Status = PeiGetHobList (&PrivateData->Ps, &HobList);
+    if (EFI_ERROR (Status)) {
+      //
+      // That's not good
+      //
+      return;
+    }
+
+    NextHob.Raw = (UINT8 *)HobList;
+
+    while (!END_OF_HOB_LIST (NextHob)) {
+      if (NextHob.Header->HobType == EFI_HOB_TYPE_GUID_EXTENSION) {
+        if (CompareGuid (&NextHob.Guid->Name, &gEfiMemoryTypeInformationGuid)) {
+          //
+          // Found the memory type information HOB, so set up the memory bins now
+          //
+          DEBUG ((DEBUG_INFO, "OSDDEBUG Found Memory Type Information HOB during memory services initialization\n"));
+          // InitializeMemoryTypeInformation (NextHob.Raw);
+          FoundMemoryTypeInfoHob = TRUE;
+          break;
+        }
+      }
+
+      NextHob.Raw = GET_NEXT_HOB (NextHob);
+    }
+
+    // if we didn't find the memory type information HOB, register a callback to set up the memory bins later
+    if (!FoundMemoryTypeInfoHob) {
+
+    }
   }
 
   return;
@@ -57,9 +97,9 @@ InitializeMemoryServices (
   This function registers the found memory configuration with the PEI Foundation.
 
   The usage model is that the PEIM that discovers the permanent memory shall invoke this service.
-  This routine will hold discoveried memory information into PeiCore's private data,
-  and set SwitchStackSignal flag. After PEIM who discovery memory is dispatched,
-  PeiDispatcher will migrate temporary memory to permanent memory.
+  This routine will store discovered memory information into PeiCore's private data,
+  and set the SwitchStackSignal flag. After the PEIM who discovered memory is dispatched,
+  the PeiDispatcher will migrate temporary memory to permanent memory.
 
   @param PeiServices        An indirect pointer to the EFI_PEI_SERVICES table published by the PEI Foundation.
   @param MemoryBegin        Start of memory address.

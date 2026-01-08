@@ -35,6 +35,7 @@ BuildMemTypeInfoHob (
   VOID
   )
 {
+  DEBUG ((DEBUG_ERROR, "OSDDEBUG2 Building Memory Type Information HOB\n"));
   BuildGuidDataHob (
     &gEfiMemoryTypeInformationGuid,
     mMemoryTypeInformation,

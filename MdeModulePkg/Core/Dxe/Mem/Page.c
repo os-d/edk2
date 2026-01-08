@@ -727,8 +727,8 @@ CoreAddMemoryDescriptor (
       if (EFI_ERROR (Status)) {
         //
         // If an error occurs allocating the pages for the current memory type, then
-        // free all the pages allocates for the previous memory types and return.  This
-        // operation with be retied when/if more memory is added to the system
+        // free all the pages allocated for the previous memory types and return. This
+        // operation will be retried when/if more memory is added to the system
         //
         for (FreeIndex = 0; FreeIndex < Index; FreeIndex++) {
           //
