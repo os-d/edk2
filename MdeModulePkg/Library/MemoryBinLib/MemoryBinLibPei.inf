@@ -1,0 +1,38 @@
+## @file
+#  PEI instance of Memory Bin Library
+#
+#  Shared logic between cores to work with memory bins for S4 resume stability.
+#
+#  Copyright (c) Microsoft Corporation.
+#
+#  SPDX-License-Identifier: BSD-2-Clause-Patent
+#
+#
+##
+
+[Defines]
+  INF_VERSION                    = 0x00010005
+  BASE_NAME                      = MemoryBinLibPei
+  MODULE_UNI_FILE                = BaseMemoryBinLib.uni
+  FILE_GUID                      = 07766330-D0FF-48B8-A3AB-7B631E9BC424
+  MODULE_TYPE                    = PEI_CORE
+  VERSION_STRING                 = 1.0
+  LIBRARY_CLASS                  = MemoryBinLib
+
+[Sources]
+  MemoryBinLib.c
+  MemoryBinLibPei.c
+
+[Packages]
+  MdePkg/MdePkg.dec
+  MdeModulePkg/MdeModulePkg.dec
+
+[LibraryClasses]
+  BaseLib
+  BaseMemoryLib
+  DebugLib
+  HobLib
+  PeiServicesLib
+
+[Guids]
+  gEfiMemoryTypeInformationGuid  ## CONSUMES

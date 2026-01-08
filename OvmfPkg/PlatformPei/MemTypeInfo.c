@@ -12,6 +12,7 @@
 #include <Library/HobLib.h>
 #include <Library/PcdLib.h>
 #include <Library/PeiServicesLib.h>
+#include <Ppi/InstallPeiMemoryBins.h>
 #include <Ppi/ReadOnlyVariable2.h>
 #include <Uefi/UefiMultiPhase.h>
 
@@ -29,6 +30,14 @@ STATIC EFI_MEMORY_TYPE_INFORMATION  mMemoryTypeInformation[] = {
   { EfiMaxMemoryType,                               0}
 };
 
+EFI_PEI_PPI_DESCRIPTOR  mPpiInstallPeiMemoryBinsPpi[] = {
+  {
+    EFI_PEI_PPI_DESCRIPTOR_PPI | EFI_PEI_PPI_DESCRIPTOR_TERMINATE_LIST,
+    &gInstallPeiMemoryBinsPpiGuid,
+    NULL
+  }
+};
+
 STATIC
 VOID
 BuildMemTypeInfoHob (
@@ -41,6 +50,8 @@ BuildMemTypeInfoHob (
     mMemoryTypeInformation,
     sizeof mMemoryTypeInformation
     );
+  DEBUG ((DEBUG_ERROR, "OSDDEBUG Notifying PEI Core of Memory Type Information HOB creation\n"));
+  PeiServicesInstallPpi (mPpiInstallPeiMemoryBinsPpi);
 }
 
 /**
