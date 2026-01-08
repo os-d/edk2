@@ -9,14 +9,11 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 #include <PiPei.h>
 
 #include <Guid/MemoryAllocationHob.h>
-#include <Guid/MemoryTypeInformation.h>
 
 #include <Library/HobLib.h>
 #include <Library/DebugLib.h>
 #include <Library/PeiServicesLib.h>
 #include <Library/BaseMemoryLib.h>
-
-#include <Ppi/MemoryTypeInformationHobAvailable.h>
 
 /**
   Returns the pointer to the HOB list.
@@ -433,14 +430,6 @@ BuildGuidHob (
   return Hob + 1;
 }
 
-EFI_PEI_PPI_DESCRIPTOR  mPpiMemoryTypeInformationHobAvailable[] = {
-  {
-    EFI_PEI_PPI_DESCRIPTOR_PPI | EFI_PEI_PPI_DESCRIPTOR_TERMINATE_LIST,
-    &gMemoryTypeInformationHobAvailablePpiGuid,
-    NULL
-  }
-};
-
 /**
   Builds a customized HOB tagged with a GUID for identification, copies the input data to the HOB
   data field, and returns the start address of the GUID HOB data.
@@ -483,16 +472,7 @@ BuildGuidDataHob (
     return HobData;
   }
 
-  CopyMem (HobData, Data, DataLength);
-
-  // PEI Core needs to know when the memory type information HOB is created so it can create the memory bins
-  // So, when it is created we need to notify the PEI Core
-  if (CompareGuid(Guid, &gEfiMemoryTypeInformationGuid)) {
-    DEBUG ((DEBUG_ERROR, "OSDDEBUG Notifying PEI Core of Memory Type Information HOB creation\n"));
-    PeiServicesInstallPpi (mPpiMemoryTypeInformationHobAvailable);
-  }
-
-  return HobData;
+  return CopyMem (HobData, Data, DataLength);
 }
 
 /**

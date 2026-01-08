@@ -7,7 +7,46 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 **/
 
 #include "PeiMain.h"
+#include <Library/MemoryBinLib.h>
 #include <Guid/MemoryTypeInformation.h>
+#include <Ppi/InstallPeiMemoryBins.h>
+
+/**
+  Initialize memory type information bins based on the memory type information HOB.
+
+  @param[in]  HobPtr   Pointer to the memory type information HOB.
+ */
+STATIC
+VOID
+InitializeMemoryTypeInformationBins (
+  IN VOID  **HobList
+  )
+{
+  EFI_HOB_RESOURCE_DESCRIPTOR  *MemoryTypeInformationResourceHob;
+  EFI_STATUS                         Status;
+
+  MemoryTypeInformationResourceHob = NULL;
+
+  Status = GetMemoryTypeInformationResourceHob (HobList, &MemoryTypeInformationResourceHob);
+
+  if (MemoryTypeInformationResourceHob != NULL) {
+    //
+    // If a Memory Type Information Resource HOB was found, then use the address
+    // range of the  Memory Type Information Resource HOB as the preferred
+    // address range for the Memory Type Information bins.
+    //
+    CoreSetMemoryTypeInformationRange (
+      MemoryTypeInformationResourceHob->PhysicalStart,
+      MemoryTypeInformationResourceHob->ResourceLength
+      );
+
+      return;
+  }
+
+  // We don't have a Memory Type Information Resource HOB, so we will allocate memory to use for the bins
+  // and create the HOB ourselves to inform DXE this is where the bins live.
+  AllocateMemoryTypeInformationBins (TRUE);
+}
 
 /**
 
@@ -29,9 +68,7 @@ InitializeMemoryServices (
   )
 {
   VOID *HobList;
-  EFI_PEI_HOB_POINTERS NextHob;
   EFI_STATUS          Status;
-  BOOLEAN             FoundMemoryTypeInfoHob = FALSE;
 
   PrivateData->SwitchStackSignal = FALSE;
 
@@ -54,38 +91,66 @@ InitializeMemoryServices (
     //
     PrivateData->Ps = &(PrivateData->ServiceTableShadow);
   } else {
-    // We have permanent memory now, so we should set up the memory bins if we can find the HOB
-    // describing the memory type information. If we can't find it now, we'll register a callback
-    // on the discovery PPI to set it up later when the HOB is created.
-    Status = PeiGetHobList (&PrivateData->Ps, &HobList);
-    if (EFI_ERROR (Status)) {
-      //
-      // That's not good
-      //
-      return;
+    // We have permanent memory now, so we should set up the memory bins if we can find the PPI
+    // that opts in to PEI bins and then the HOB that contains the memory type information.
+    Status = PeiLocatePpi (&PrivateData->Ps, &gInstallPeiMemoryBinsPpiGuid, 0, NULL, NULL);
+
+    if (EFI_ERROR (Status) && Status != EFI_NOT_FOUND) {
+      // We hit an unexpected error trying to locate the PPI, we should catch this with an assert, but continue and
+      // skip setting up the memory bins
+      DEBUG ((DEBUG_ERROR, "Failed to locate InstallPeiMemoryBinsPpi with Status %r\n", Status));
+      ASSERT(FALSE);
     }
 
-    NextHob.Raw = (UINT8 *)HobList;
-
-    while (!END_OF_HOB_LIST (NextHob)) {
-      if (NextHob.Header->HobType == EFI_HOB_TYPE_GUID_EXTENSION) {
-        if (CompareGuid (&NextHob.Guid->Name, &gEfiMemoryTypeInformationGuid)) {
-          //
-          // Found the memory type information HOB, so set up the memory bins now
-          //
-          DEBUG ((DEBUG_INFO, "OSDDEBUG Found Memory Type Information HOB during memory services initialization\n"));
-          // InitializeMemoryTypeInformation (NextHob.Raw);
-          FoundMemoryTypeInfoHob = TRUE;
-          break;
-        }
+    if (!EFI_ERROR (Status)) {
+      Status = PeiGetHobList (&PrivateData->Ps, &HobList);
+      if (EFI_ERROR (Status)) {
+        //
+        // That's not good
+        //
+        ASSERT_EFI_ERROR (Status);
+        return;
       }
 
-      NextHob.Raw = GET_NEXT_HOB (NextHob);
-    }
+      Status = PopulateMemoryTypeInformation();
 
-    // if we didn't find the memory type information HOB, register a callback to set up the memory bins later
-    if (!FoundMemoryTypeInfoHob) {
+      if (EFI_ERROR (Status)) {
+        //
+        // Couldn't find the memory type information HOB, so we can't set up bins
+        //
+        DEBUG ((DEBUG_ERROR,
+          "Memory Type Information HOB not found during memory services initialization but PPI was produced\n"));
+        ASSERT(FALSE);
+        return;
+      }
 
+      InitializeMemoryTypeInformationBins (&HobList);
+
+      // NextHob.Raw = (UINT8 *)HobList;
+
+      // while (!END_OF_HOB_LIST (NextHob)) {
+      //   if (NextHob.Header->HobType == EFI_HOB_TYPE_GUID_EXTENSION) {
+      //     if (CompareGuid (&NextHob.Guid->Name, &gEfiMemoryTypeInformationGuid)) {
+      //       //
+      //       // Found the memory type information HOB, so set up the memory bins now
+      //       //
+      //       DEBUG ((DEBUG_INFO, "OSDDEBUG Found Memory Type Information HOB during memory services initialization\n"));
+      //       InitializeMemoryTypeInformationBins (NextHob.Raw);
+      //       FoundMemoryTypeInfoHob = TRUE;
+      //       break;
+      //     }
+      //   }
+
+      //   NextHob.Raw = GET_NEXT_HOB (NextHob);
+      // }
+
+      // // if we didn't find the memory type information HOB, but the platform told us it was available, we should assert
+      // // and continue without setting up bins
+      // if (!FoundMemoryTypeInfoHob) {
+      //   DEBUG ((DEBUG_ERROR,
+      //     "Memory Type Information HOB not found during memory services initialization but PPI was produced\n"));
+      //   ASSERT(FALSE);
+      // }
     }
   }
 

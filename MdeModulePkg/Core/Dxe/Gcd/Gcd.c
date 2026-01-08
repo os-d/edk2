@@ -2586,6 +2586,7 @@ CoreInitializeMemoryServices (
   }
 
   if (MemoryTypeInformationResourceHob != NULL) {
+    DEBUG ((DEBUG_ERROR, "OSDDEBUG Memory Type Information Resource HOB found, Start %llx ResourceLength %llx\n", MemoryTypeInformationResourceHob->PhysicalStart, MemoryTypeInformationResourceHob->ResourceLength));
     //
     // If a Memory Type Information Resource HOB was found, then use the address
     // range of the  Memory Type Information Resource HOB as the preferred

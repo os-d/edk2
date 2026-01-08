@@ -2198,6 +2198,12 @@ CoreGetMemoryMap (
   MemoryMapEnd = MemoryMap;
   MemoryMap    = MemoryMapStart;
   while (MemoryMap < MemoryMapEnd) {
+    DEBUG ((DEBUG_ERROR, "OSDDEBUG6 Memory Type: %d, Start: %lx, Pages: %lx, Attr: %lx\n",
+      MemoryMap->Type,
+      MemoryMap->PhysicalStart,
+      MemoryMap->NumberOfPages,
+      MemoryMap->Attribute
+      ));
     MemoryMap->Attribute &= ~(UINT64)EFI_MEMORY_ACCESS_MASK;
     MemoryMap             = NEXT_MEMORY_DESCRIPTOR (MemoryMap, Size);
   }
