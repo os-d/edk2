@@ -32,6 +32,15 @@ HandOffToDxeCore (
   VOID                        *TopOfStack;
   EFI_STATUS                  Status;
   EDKII_MEMORY_ATTRIBUTE_PPI  *MemoryPpi;
+  EFI_PHYSICAL_ADDRESS        Address;
+
+  PeiServicesAllocatePages(
+    EfiRuntimeServicesData,
+    0x10,
+    &Address
+    );
+
+  DEBUG ((DEBUG_INFO, "HandOffToDxeCore: Allocated 0x100000 bytes at 0x%llx for DXE Runtime Services Data\n", Address));
 
   //
   // Allocate 128KB for the Stack

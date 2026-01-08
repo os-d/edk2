@@ -24,6 +24,13 @@ EFI_TIMER_ARCH_PROTOCOL           *gTimer         = NULL;
 EFI_BDS_ARCH_PROTOCOL             *gBds           = NULL;
 EFI_WATCHDOG_TIMER_ARCH_PROTOCOL  *gWatchdogTimer = NULL;
 
+EFI_STATUS
+EFIAPI
+UefiBootServicesTableLibConstructor (
+  IN EFI_HANDLE        ImageHandle,
+  IN EFI_SYSTEM_TABLE  *SystemTable
+  );
+
 //
 // DXE Core globals for optional protocol dependencies
 //
@@ -360,9 +367,9 @@ DxeMain (
   ASSERT_EFI_ERROR (Status);
 
   //
-  // Install Memory Type Information Table into the EFI System Tables's Configuration Table
+  // Install Memory Type Information Statistics Table into the EFI System Tables's Configuration Table
   //
-  Status = CoreInstallConfigurationTable (&gEfiMemoryTypeInformationGuid, &gMemoryTypeInformation);
+  Status = CoreInstallConfigurationTable (&gMemoryTypeInformationStatisticsGuid, &mMemoryTypeStatistics);
   ASSERT_EFI_ERROR (Status);
 
   //

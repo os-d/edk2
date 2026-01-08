@@ -13,6 +13,7 @@
 //
 #include <Ppi/MasterBootMode.h>
 #include <Ppi/BootInRecoveryMode.h>
+#include <Ppi/InstallPeiMemoryBins.h>
 #include <Guid/MemoryTypeInformation.h>
 //
 // The Library classes this module consumes
@@ -33,7 +34,7 @@ MemoryPeim (
 
 // May want to put this into a library so you only need the PCD settings if you are using the feature?
 VOID
-BuildMemoryTypeInformationHob (
+BuildMemoryTypeInformationHob1 (
   VOID
   )
 {
@@ -54,6 +55,17 @@ BuildMemoryTypeInformationHob (
   Info[5].NumberOfPages = 0;
 
   BuildGuidDataHob (&gEfiMemoryTypeInformationGuid, &Info, sizeof (Info));
+  DEBUG ((DEBUG_ERROR, "OSDDEBUG Notifying PEI Core of Memory Type Information HOB creation\n"));
+  PeiServicesInstallPpi (mPpiInstallPeiMemoryBinsPpi);
+}
+
+// May want to put this into a library so you only need the PCD settings if you are using the feature?
+VOID
+BuildMemoryTypeInformationHob (
+  VOID
+  )
+{
+  return;
 }
 
 /*++
@@ -131,6 +143,8 @@ InitializeMemory (
   // Initialize MMU and Memory HOBs (Resource Descriptor HOBs)
   Status = MemoryPeim (UefiMemoryBase, FixedPcdGet32 (PcdSystemMemoryUefiRegionSize));
   ASSERT_EFI_ERROR (Status);
+
+  BuildMemoryTypeInformationHob1 ();
 
   return Status;
 }
