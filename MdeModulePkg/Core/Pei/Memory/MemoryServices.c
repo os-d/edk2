@@ -22,10 +22,18 @@ InitializeMemoryTypeInformationBins (
   IN VOID  **HobList
   )
 {
+  EFI_PHYSICAL_ADDRESS  BaseBinAddress;
+  EFI_PHYSICAL_ADDRESS  EndBinAddress;
+  EFI_PEI_HOB_POINTERS  Hob;
+  UINTN                 Index;
   EFI_HOB_RESOURCE_DESCRIPTOR  *MemoryTypeInformationResourceHob;
+  PEI_CORE_INSTANCE     *PrivateData;
   EFI_STATUS                   Status;
+  EFI_MEMORY_TYPE       Type;
 
   MemoryTypeInformationResourceHob = NULL;
+  BaseBinAddress                   = 0;
+  EndBinAddress                    = 0;
 
   Status = GetMemoryTypeInformationResourceHob (HobList, &MemoryTypeInformationResourceHob);
 
@@ -40,12 +48,51 @@ InitializeMemoryTypeInformationBins (
       MemoryTypeInformationResourceHob->ResourceLength
       );
 
-    return;
+    goto Fixup_PHIT;
   }
 
   // We don't have a Memory Type Information Resource HOB, so we will allocate memory to use for the bins
   // and create the HOB ourselves to inform DXE this is where the bins live.
   AllocateMemoryTypeInformationBins (TRUE);
+
+Fixup_PHIT:
+  // At this point we have set up our memory bins, so we need to fix up the PHIT to reflect the
+  // new memory allocations.
+  Hob.Raw     = ((EFI_PEI_HOB_POINTERS *)HobList)->Raw;
+
+  if (Hob.Raw == NULL) {
+    //
+    // We shouldn't get here, bins won't work without a valid HOB list
+    //
+    DEBUG ((DEBUG_ERROR, "%a: No valid HOB list found, can't init memory bins\n", __func__));
+    ASSERT (FALSE);
+    return;
+  }
+
+  // Find max/min addresses of the bins
+  for (Index = 0; gMemoryTypeInformation[Index].Type != EfiMaxMemoryType; Index++) {
+    //
+    // Make sure the memory type in the gMemoryTypeInformation[] array is valid
+    //
+    Type = (EFI_MEMORY_TYPE)(gMemoryTypeInformation[Index].Type);
+    if ((UINT32)Type > EfiMaxMemoryType) {
+      continue;
+    }
+
+    if (gMemoryTypeInformation[Index].NumberOfPages != 0 & !mMemoryTypeStatistics[Type].DefaultBin) {
+        if (mMemoryTypeStatistics[Type].BaseAddress < BaseBinAddress || BaseBinAddress == 0) {
+          BaseBinAddress = mMemoryTypeStatistics[Type].BaseAddress;
+        }
+
+        if (mMemoryTypeStatistics[Type].MaximumAddress > EndBinAddress) {
+          EndBinAddress = mMemoryTypeStatistics[Type].MaximumAddress;
+        }
+    }
+  } 
+
+  // The bins may or may not intersect the PHIT
+  if (Hob.HandoffInformationTable->EfiFreeMemoryTop > BaseBinAddress && Hob.HandoffInformationTable->EfiFreeMemoryBottom < EndBinAddress) {
+  }
 }
 
 /**
@@ -716,11 +763,11 @@ PeiAllocatePages (
     FreeMemoryBottom = &(PrivateData->PhysicalMemoryBegin);
   } else {
     // if we are in permanent memory and have memory bins, we need to respect them
-    if (mMemoryTypeInformationInitialized) {
+    if (mMemoryTypeInformationInitialized && !mMemoryTypeStatistics[MemoryType].DefaultBin) {
       FreeMemoryTop    = &(mMemoryTypeStatistics[MemoryType].MaximumAddress);
       FreeMemoryBottom = &(mMemoryTypeStatistics[MemoryType].BaseAddress);
-      DEBUG ((DEBUG_ERROR, "OSDDEBUG20 AllocatePages: Using memory bin for type %d: Base 0x%lx, Max 0x%lx\n",
-        MemoryType, *FreeMemoryBottom, *FreeMemoryTop));
+      DEBUG ((DEBUG_ERROR, "OSDDEBUG20 AllocatePages: Using memory bin for type %d: Base 0x%lx, Max 0x%lx FreeMemoryTop: 0x%llx FreeMemoryBottom: 0x%llx\n",
+        MemoryType, *FreeMemoryBottom, *FreeMemoryTop, Hob.HandoffInformationTable->EfiFreeMemoryTop, Hob.HandoffInformationTable->EfiFreeMemoryBottom));
     } else {
       FreeMemoryTop    = &(Hob.HandoffInformationTable->EfiFreeMemoryTop);
       FreeMemoryBottom = &(Hob.HandoffInformationTable->EfiFreeMemoryBottom);
@@ -735,7 +782,7 @@ PeiAllocatePages (
     //
     Padding = *(FreeMemoryTop) & (Granularity - 1);
     if (((UINTN)(*FreeMemoryTop - *FreeMemoryBottom) < Padding) || (*(FreeMemoryTop) - Padding == 0)) {
-      if ((Index == 0) && mMemoryTypeInformationInitialized) {
+      if ((Index == 0) && mMemoryTypeInformationInitialized && !mMemoryTypeStatistics[MemoryType].DefaultBin) {
         //
         // Try to the default bin before searching memory allocation HOBs
         //
@@ -783,17 +830,6 @@ PeiAllocatePages (
       *(FreeMemoryTop) -= Pages * EFI_PAGE_SIZE;
 
       //
-      // If this was the default bin, we need to update all other users of the default bin to not overlap
-      //
-      if (mMemoryTypeInformationInitialized == TRUE && mMemoryTypeStatistics[MemoryType].DefaultBin) {
-        for (Index = 0; Index < EfiMaxMemoryType; Index++) {
-          if (mMemoryTypeStatistics[Index].DefaultBin) {
-            mMemoryTypeStatistics[Index].MaximumAddress = *(FreeMemoryTop);
-          }
-        }
-      }
-
-      //
       // Update the value for the caller
       //
       *Memory = *(FreeMemoryTop);
@@ -810,7 +846,7 @@ PeiAllocatePages (
       return EFI_SUCCESS;
     }
 
-    if ((Index == 0) && mMemoryTypeInformationInitialized) {
+    if ((Index == 0) && mMemoryTypeInformationInitialized && !mMemoryTypeStatistics[MemoryType].DefaultBin) {
       //
       // Try to the default bin before searching memory allocation HOBs
       //
