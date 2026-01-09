@@ -12,6 +12,7 @@
 
 #include <Guid/MemoryTypeInformation.h>
 
+#include <Library/BaseLib.h>
 #include <Library/BaseMemoryLib.h>
 #include <Library/MemoryBinLib.h>
 #include <Library/DebugLib.h>
@@ -126,9 +127,9 @@ EFI_MEMORY_TYPE_STATISTICS  mMemoryTypeStatistics[EfiMaxMemoryType + 1] = {
 BOOLEAN  mMemoryTypeInformationInitialized = FALSE;
 
 /**
-  Calculate total memory bin size neeeded.
+  Calculate total memory bin size needed. This function takes into account runtime page allocation granularity.
 
-  @return The total memory bin size neeeded.
+  @return The total memory bin size needed.
 
 **/
 UINT64
@@ -148,12 +149,13 @@ CalculateTotalMemoryBinSizeNeeded (
   TotalSize = 0;
   for (Index = 0; gMemoryTypeInformation[Index].Type != EfiMaxMemoryType; Index++) {
     if ((gMemoryTypeInformation[Index].Type == EfiReservedMemoryType) ||
-       (gMemoryTypeInformation[Index].Type == EfiACPIMemoryNVS) ||
-       (gMemoryTypeInformation[Index].Type == EfiRuntimeServicesCode) ||
-       (gMemoryTypeInformation[Index].Type == EfiRuntimeServicesData))
-  {
-    Granularity = RUNTIME_PAGE_ALLOCATION_GRANULARITY;
-  }
+        (gMemoryTypeInformation[Index].Type == EfiACPIMemoryNVS) ||
+        (gMemoryTypeInformation[Index].Type == EfiRuntimeServicesCode) ||
+        (gMemoryTypeInformation[Index].Type == EfiRuntimeServicesData))
+    {
+      Granularity = RUNTIME_PAGE_ALLOCATION_GRANULARITY;
+    }
+
     TotalSize += ALIGN_VALUE (LShiftU64 (gMemoryTypeInformation[Index].NumberOfPages, EFI_PAGE_SHIFT), Granularity);
   }
 
@@ -348,7 +350,7 @@ CoreSetMemoryTypeInformationRange (
     mMemoryTypeStatistics[Type].CurrentNumberOfPages = 0;
     if (mMemoryTypeStatistics[Type].MaximumAddress == MAX_ALLOC_ADDRESS) {
       mMemoryTypeStatistics[Type].MaximumAddress = mDefaultMaximumAddress;
-      mMemoryTypeStatistics[Type].DefaultBin      = TRUE;
+      mMemoryTypeStatistics[Type].DefaultBin     = TRUE;
     }
   }
 
@@ -378,8 +380,15 @@ AllocateMemoryTypeInformationBins (
   EFI_PHYSICAL_ADDRESS  LastBinAddress;
   UINTN                 RequiredSize;
 
-  BaseAddress    = 0;
-  RequiredSize   = CalculateTotalMemoryBinSizeNeeded ();
+  //
+  // Check to see if the statistics for the different memory types have already been established
+  //
+  if (mMemoryTypeInformationInitialized) {
+    return;
+  }
+
+  BaseAddress  = 0;
+  RequiredSize = CalculateTotalMemoryBinSizeNeeded ();
 
   DEBUG ((DEBUG_ERROR, "%a: Attempting to allocate 0x%llx bytes for all memory bins\n", __func__, RequiredSize));
 
@@ -397,7 +406,7 @@ AllocateMemoryTypeInformationBins (
     return;
   }
 
-  LastBinAddress = BaseAddress + RequiredSize;
+  LastBinAddress         = BaseAddress + RequiredSize;
   mDefaultMaximumAddress = BaseAddress - 1;
 
   //
@@ -413,9 +422,9 @@ AllocateMemoryTypeInformationBins (
     }
 
     if (gMemoryTypeInformation[Index].NumberOfPages != 0) {
-      mMemoryTypeStatistics[Type].BaseAddress = LastBinAddress - LShiftU64 (gMemoryTypeInformation[Index].NumberOfPages, EFI_PAGE_SHIFT);
-      mMemoryTypeStatistics[Type].MaximumAddress  = LastBinAddress - 1;
-      LastBinAddress                         = mMemoryTypeStatistics[Type].BaseAddress;
+      mMemoryTypeStatistics[Type].BaseAddress    = LastBinAddress - LShiftU64 (gMemoryTypeInformation[Index].NumberOfPages, EFI_PAGE_SHIFT);
+      mMemoryTypeStatistics[Type].MaximumAddress = LastBinAddress - 1;
+      LastBinAddress                             = mMemoryTypeStatistics[Type].BaseAddress;
       DEBUG ((DEBUG_ERROR, "OSDDEBUG5 %a: Memory Type %d assigned bin 0x%llx - 0x%llx\n", __func__, Type, mMemoryTypeStatistics[Type].BaseAddress, mMemoryTypeStatistics[Type].MaximumAddress));
     }
   }
@@ -426,9 +435,9 @@ AllocateMemoryTypeInformationBins (
   // allocations can occur within their respective bins
   //
   FreeBinPages (
-        BaseAddress,
-        RShiftU64 (RequiredSize, EFI_PAGE_SHIFT)
-        );
+    BaseAddress,
+    RShiftU64 (RequiredSize, EFI_PAGE_SHIFT)
+    );
   for (Index = 0; gMemoryTypeInformation[Index].Type != EfiMaxMemoryType; Index++) {
     //
     // Make sure the memory type in the gMemoryTypeInformation[] array is valid
@@ -458,7 +467,7 @@ AllocateMemoryTypeInformationBins (
     mMemoryTypeStatistics[Type].CurrentNumberOfPages = 0;
     if (mMemoryTypeStatistics[Type].MaximumAddress == MAX_ALLOC_ADDRESS) {
       mMemoryTypeStatistics[Type].MaximumAddress = mDefaultMaximumAddress;
-      mMemoryTypeStatistics[Type].DefaultBin      = TRUE;
+      mMemoryTypeStatistics[Type].DefaultBin     = TRUE;
     }
   }
 
@@ -477,4 +486,48 @@ AllocateMemoryTypeInformationBins (
   }
 
   mMemoryTypeInformationInitialized = TRUE;
+}
+
+/**
+  Update memory type statistics upon memory allocation and free.
+
+  @param OldType          The original memory type of the memory region.
+  @param NewType          The new memory type of the memory region.
+  @param Start            The starting physical address of the memory region.
+  @param NumberOfPages    The number of pages in the memory region.
+**/
+VOID
+EFIAPI
+UpdateMemoryStatistics (
+  IN EFI_MEMORY_TYPE       OldType,
+  IN EFI_MEMORY_TYPE       NewType,
+  IN EFI_PHYSICAL_ADDRESS  Start,
+  IN UINTN                 NumberOfPages
+  )
+{
+  //
+  // Update counters for the number of pages allocated to each memory type
+  //
+  if (OldType < EfiMaxMemoryType) {
+    if (((Start >= mMemoryTypeStatistics[OldType].BaseAddress) && (Start <= mMemoryTypeStatistics[OldType].MaximumAddress)) ||
+        ((Start >= mDefaultBaseAddress) && (Start <= mDefaultMaximumAddress)))
+    {
+      if (NumberOfPages > mMemoryTypeStatistics[OldType].CurrentNumberOfPages) {
+        mMemoryTypeStatistics[OldType].CurrentNumberOfPages = 0;
+      } else {
+        mMemoryTypeStatistics[OldType].CurrentNumberOfPages -= NumberOfPages;
+      }
+    }
+  }
+
+  if (NewType < EfiMaxMemoryType) {
+    if (((Start >= mMemoryTypeStatistics[NewType].BaseAddress) && (Start <= mMemoryTypeStatistics[NewType].MaximumAddress)) ||
+        ((Start >= mDefaultBaseAddress) && (Start <= mDefaultMaximumAddress)))
+    {
+      mMemoryTypeStatistics[NewType].CurrentNumberOfPages += NumberOfPages;
+      if (mMemoryTypeStatistics[NewType].CurrentNumberOfPages > gMemoryTypeInformation[mMemoryTypeStatistics[NewType].InformationIndex].NumberOfPages) {
+        gMemoryTypeInformation[mMemoryTypeStatistics[NewType].InformationIndex].NumberOfPages = (UINT32)mMemoryTypeStatistics[NewType].CurrentNumberOfPages;
+      }
+    }
+  }
 }

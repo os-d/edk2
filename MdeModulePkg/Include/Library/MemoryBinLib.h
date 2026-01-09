@@ -26,6 +26,17 @@ typedef struct {
 } EFI_MEMORY_TYPE_STATISTICS;
 
 /**
+  Calculate total memory bin size needed. This function takes into account runtime page allocation granularity.
+
+  @return The total memory bin size needed.
+
+**/
+UINT64
+CalculateTotalMemoryBinSizeNeeded (
+  VOID
+  );
+
+/**
   Get the Memory Type Information HOB if it exists and populate gMemoryTypeInformation.
 
   @return EFI_STATUS                      On EFI_SUCCESS, gMemoryTypeInformation points to the
@@ -93,7 +104,26 @@ AllocateMemoryTypeInformationBins (
   BOOLEAN  CreateHob
   );
 
+/**
+  Update memory type statistics upon memory allocation and free.
+
+  @param OldType          The original memory type of the memory region.
+  @param NewType          The new memory type of the memory region.
+  @param Start            The starting physical address of the memory region.
+  @param NumberOfPages    The number of pages in the memory region.
+**/
+VOID
+EFIAPI
+UpdateMemoryStatistics (
+  IN EFI_MEMORY_TYPE       OldType,
+  IN EFI_MEMORY_TYPE       NewType,
+  IN EFI_PHYSICAL_ADDRESS  Start,
+  IN UINTN                 NumberOfPages
+  );
+
 extern EFI_MEMORY_TYPE_INFORMATION  gMemoryTypeInformation[EfiMaxMemoryType + 1];
-extern EFI_MEMORY_TYPE_STATISTICS  mMemoryTypeStatistics[EfiMaxMemoryType + 1];
+extern EFI_MEMORY_TYPE_STATISTICS   mMemoryTypeStatistics[EfiMaxMemoryType + 1];
 extern BOOLEAN                      mMemoryTypeInformationInitialized;
+extern EFI_PHYSICAL_ADDRESS         mDefaultMaximumAddress;
+extern EFI_PHYSICAL_ADDRESS         mDefaultBaseAddress;
 #endif // BASE_MEMORY_BIN_LIB_
