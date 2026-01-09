@@ -27,9 +27,7 @@ InitializeMemoryTypeInformationBins (
   EFI_PEI_HOB_POINTERS  Hob;
   UINTN                 Index;
   EFI_HOB_RESOURCE_DESCRIPTOR  *MemoryTypeInformationResourceHob;
-  PEI_CORE_INSTANCE     *PrivateData;
   EFI_STATUS                   Status;
-  EFI_MEMORY_TYPE       Type;
 
   MemoryTypeInformationResourceHob = NULL;
   BaseBinAddress                   = 0;
@@ -70,28 +68,23 @@ Fixup_PHIT:
   }
 
   // Find max/min addresses of the bins
-  for (Index = 0; gMemoryTypeInformation[Index].Type != EfiMaxMemoryType; Index++) {
-    //
-    // Make sure the memory type in the gMemoryTypeInformation[] array is valid
-    //
-    Type = (EFI_MEMORY_TYPE)(gMemoryTypeInformation[Index].Type);
-    if ((UINT32)Type > EfiMaxMemoryType) {
-      continue;
-    }
-
-    if (gMemoryTypeInformation[Index].NumberOfPages != 0 & !mMemoryTypeStatistics[Type].DefaultBin) {
-        if (mMemoryTypeStatistics[Type].BaseAddress < BaseBinAddress || BaseBinAddress == 0) {
-          BaseBinAddress = mMemoryTypeStatistics[Type].BaseAddress;
+  for (Index = 0; (EFI_MEMORY_TYPE)Index < EfiMaxMemoryType; Index++) {
+    if (mMemoryTypeStatistics[Index].NumberOfPages != 0 && !mMemoryTypeStatistics[Index].DefaultBin) {
+        if (mMemoryTypeStatistics[Index].BaseAddress < BaseBinAddress || BaseBinAddress == 0) {
+          BaseBinAddress = mMemoryTypeStatistics[Index].BaseAddress;
         }
 
-        if (mMemoryTypeStatistics[Type].MaximumAddress > EndBinAddress) {
-          EndBinAddress = mMemoryTypeStatistics[Type].MaximumAddress;
+        if (mMemoryTypeStatistics[Index].MaximumAddress > EndBinAddress) {
+          EndBinAddress = mMemoryTypeStatistics[Index].MaximumAddress;
         }
     }
   } 
 
+  DEBUG ((DEBUG_INFO, "%a: Memory bins address range 0x%llx - 0x%llx\n", __func__, BaseBinAddress, EndBinAddress));
   // The bins may or may not intersect the PHIT
   if (Hob.HandoffInformationTable->EfiFreeMemoryTop > BaseBinAddress && Hob.HandoffInformationTable->EfiFreeMemoryBottom < EndBinAddress) {
+    DEBUG ((DEBUG_INFO, "%a: Fixing up PHIT FreeMemoryTop from 0x%llx to 0x%llx\n", __func__, Hob.HandoffInformationTable->EfiFreeMemoryTop, BaseBinAddress));
+    Hob.HandoffInformationTable->EfiFreeMemoryTop = BaseBinAddress;
   }
 }
 
@@ -769,6 +762,7 @@ PeiAllocatePages (
       DEBUG ((DEBUG_ERROR, "OSDDEBUG20 AllocatePages: Using memory bin for type %d: Base 0x%lx, Max 0x%lx FreeMemoryTop: 0x%llx FreeMemoryBottom: 0x%llx\n",
         MemoryType, *FreeMemoryBottom, *FreeMemoryTop, Hob.HandoffInformationTable->EfiFreeMemoryTop, Hob.HandoffInformationTable->EfiFreeMemoryBottom));
     } else {
+      DEBUG ((DEBUG_ERROR, "OSDDEBUG40 AllocatePages: Using default bin for type %d FreeMemoryTop: 0x%llx FreeMemoryBottom: 0x%llx\n", MemoryType, Hob.HandoffInformationTable->EfiFreeMemoryTop, Hob.HandoffInformationTable->EfiFreeMemoryBottom));
       FreeMemoryTop    = &(Hob.HandoffInformationTable->EfiFreeMemoryTop);
       FreeMemoryBottom = &(Hob.HandoffInformationTable->EfiFreeMemoryBottom);
     }
