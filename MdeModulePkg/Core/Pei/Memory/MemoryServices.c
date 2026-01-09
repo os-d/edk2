@@ -36,6 +36,7 @@ InitializeMemoryTypeInformationBins (
   Status = GetMemoryTypeInformationResourceHob (HobList, &MemoryTypeInformationResourceHob);
 
   if (MemoryTypeInformationResourceHob != NULL) {
+    DEBUG ((DEBUG_ERROR, "OSDDEBUG Memory Type Information Resource HOB found, Start %llx ResourceLength %llx\n", MemoryTypeInformationResourceHob->PhysicalStart, MemoryTypeInformationResourceHob->ResourceLength));
     //
     // If a Memory Type Information Resource HOB was found, then use the address
     // range of the  Memory Type Information Resource HOB as the preferred
@@ -167,32 +168,6 @@ InitializeMemoryServices (
       }
 
       InitializeMemoryTypeInformationBins (&HobList);
-
-      // NextHob.Raw = (UINT8 *)HobList;
-
-      // while (!END_OF_HOB_LIST (NextHob)) {
-      //   if (NextHob.Header->HobType == EFI_HOB_TYPE_GUID_EXTENSION) {
-      //     if (CompareGuid (&NextHob.Guid->Name, &gEfiMemoryTypeInformationGuid)) {
-      //       //
-      //       // Found the memory type information HOB, so set up the memory bins now
-      //       //
-      //       DEBUG ((DEBUG_INFO, "OSDDEBUG Found Memory Type Information HOB during memory services initialization\n"));
-      //       InitializeMemoryTypeInformationBins (NextHob.Raw);
-      //       FoundMemoryTypeInfoHob = TRUE;
-      //       break;
-      //     }
-      //   }
-
-      //   NextHob.Raw = GET_NEXT_HOB (NextHob);
-      // }
-
-      // // if we didn't find the memory type information HOB, but the platform told us it was available, we should assert
-      // // and continue without setting up bins
-      // if (!FoundMemoryTypeInfoHob) {
-      //   DEBUG ((DEBUG_ERROR,
-      //     "Memory Type Information HOB not found during memory services initialization but PPI was produced\n"));
-      //   ASSERT(FALSE);
-      // }
     }
   }
 

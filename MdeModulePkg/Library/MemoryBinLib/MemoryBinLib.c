@@ -294,18 +294,7 @@ CoreSetMemoryTypeInformationRange (
   //
   // Return if size of the Memory Type Information bins is greater than Length
   //
-  Size = 0;
-  for (Index = 0; gMemoryTypeInformation[Index].Type != EfiMaxMemoryType; Index++) {
-    //
-    // Make sure the memory type in the gMemoryTypeInformation[] array is valid
-    //
-    Type = (EFI_MEMORY_TYPE)(gMemoryTypeInformation[Index].Type);
-    if ((UINT32)Type > EfiMaxMemoryType) {
-      continue;
-    }
-
-    Size += EFI_PAGES_TO_SIZE (gMemoryTypeInformation[Index].NumberOfPages);
-  }
+  Size = CalculateTotalMemoryBinSizeNeeded ();
 
   if (Size > Length) {
     return;
@@ -329,6 +318,8 @@ CoreSetMemoryTypeInformationRange (
       mMemoryTypeStatistics[Type].MaximumAddress = Top - 1;
       Top                                       -= EFI_PAGES_TO_SIZE (gMemoryTypeInformation[Index].NumberOfPages);
       mMemoryTypeStatistics[Type].BaseAddress    = Top;
+
+      DEBUG ((DEBUG_ERROR, "OSDDEBUG45 %a: Memory Type %d assigned bin 0x%llx - 0x%llx\n", __func__, Type, mMemoryTypeStatistics[Type].BaseAddress, mMemoryTypeStatistics[Type].MaximumAddress));
 
       //
       // If the current base address is the lowest address so far, then update
@@ -357,6 +348,7 @@ CoreSetMemoryTypeInformationRange (
     mMemoryTypeStatistics[Type].CurrentNumberOfPages = 0;
     if (mMemoryTypeStatistics[Type].MaximumAddress == MAX_ALLOC_ADDRESS) {
       mMemoryTypeStatistics[Type].MaximumAddress = mDefaultMaximumAddress;
+      mMemoryTypeStatistics[Type].DefaultBin      = TRUE;
     }
   }
 
