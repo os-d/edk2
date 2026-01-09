@@ -22,6 +22,7 @@ typedef struct {
   UINTN                   InformationIndex;
   BOOLEAN                 Special;
   BOOLEAN                 Runtime;
+  BOOLEAN                 DefaultBin;
 } EFI_MEMORY_TYPE_STATISTICS;
 
 /**
@@ -93,4 +94,6 @@ AllocateMemoryTypeInformationBins (
   );
 
 extern EFI_MEMORY_TYPE_INFORMATION  gMemoryTypeInformation[EfiMaxMemoryType + 1];
+extern EFI_MEMORY_TYPE_STATISTICS  mMemoryTypeStatistics[EfiMaxMemoryType + 1];
+extern BOOLEAN                      mMemoryTypeInformationInitialized;
 #endif // BASE_MEMORY_BIN_LIB_
