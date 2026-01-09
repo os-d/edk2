@@ -606,6 +606,8 @@ CoreSetMemoryTypeInformationRange (
       Top                                       -= EFI_PAGES_TO_SIZE (gMemoryTypeInformation[Index].NumberOfPages);
       mMemoryTypeStatistics[Type].BaseAddress    = Top;
 
+      DEBUG ((DEBUG_ERROR, "OSDDEBUG4 %a: Memory Type %d assigned bin 0x%llx - 0x%llx\n", __func__, Type, mMemoryTypeStatistics[Type].BaseAddress, mMemoryTypeStatistics[Type].MaximumAddress));
+
       //
       // If the current base address is the lowest address so far, then update
       // the default maximum address
@@ -635,6 +637,8 @@ CoreSetMemoryTypeInformationRange (
       mMemoryTypeStatistics[Type].MaximumAddress = mDefaultMaximumAddress;
     }
   }
+
+  DEBUG ((DEBUG_ERROR, "OSDDEBUG7 %a: Bins set to %lx - %lx\n", __func__, Start, Start + Length - 1));
 
   mMemoryTypeInformationInitialized = TRUE;
 }
@@ -1300,6 +1304,9 @@ FindFreePages (
   // Attempt to find free pages in the preferred bin based on the requested memory type
   //
   if (((UINT32)NewType < EfiMaxMemoryType) && (MaxAddress >= mMemoryTypeStatistics[NewType].MaximumAddress)) {
+    if (NewType != 4) {
+      DEBUG((DEBUG_ERROR, "OSDDEBUG8 FindFreePages: Trying preferred bin for type %d in range 0x%llx - 0x%llx\n", NewType, mMemoryTypeStatistics[NewType].BaseAddress, mMemoryTypeStatistics[NewType].MaximumAddress));
+    }
     Start = CoreFindFreePagesI (
               mMemoryTypeStatistics[NewType].MaximumAddress,
               mMemoryTypeStatistics[NewType].BaseAddress,
@@ -1311,6 +1318,7 @@ FindFreePages (
     if (Start != 0) {
       return Start;
     }
+    DEBUG((DEBUG_ERROR, "OSDDEBUG9 FindFreePages: Preferred bin for type %d failed\n", NewType));
   }
 
   //

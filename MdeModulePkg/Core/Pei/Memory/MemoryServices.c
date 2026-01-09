@@ -23,7 +23,7 @@ InitializeMemoryTypeInformationBins (
   )
 {
   EFI_HOB_RESOURCE_DESCRIPTOR  *MemoryTypeInformationResourceHob;
-  EFI_STATUS                         Status;
+  EFI_STATUS                   Status;
 
   MemoryTypeInformationResourceHob = NULL;
 
@@ -40,7 +40,7 @@ InitializeMemoryTypeInformationBins (
       MemoryTypeInformationResourceHob->ResourceLength
       );
 
-      return;
+    return;
   }
 
   // We don't have a Memory Type Information Resource HOB, so we will allocate memory to use for the bins
@@ -67,8 +67,8 @@ InitializeMemoryServices (
   IN PEI_CORE_INSTANCE           *OldCoreData
   )
 {
-  VOID *HobList;
-  EFI_STATUS          Status;
+  VOID        *HobList;
+  EFI_STATUS  Status;
 
   PrivateData->SwitchStackSignal = FALSE;
 
@@ -95,11 +95,11 @@ InitializeMemoryServices (
     // that opts in to PEI bins and then the HOB that contains the memory type information.
     Status = PeiLocatePpi (&PrivateData->Ps, &gInstallPeiMemoryBinsPpiGuid, 0, NULL, NULL);
 
-    if (EFI_ERROR (Status) && Status != EFI_NOT_FOUND) {
+    if (EFI_ERROR (Status) && (Status != EFI_NOT_FOUND)) {
       // We hit an unexpected error trying to locate the PPI, we should catch this with an assert, but continue and
       // skip setting up the memory bins
       DEBUG ((DEBUG_ERROR, "Failed to locate InstallPeiMemoryBinsPpi with Status %r\n", Status));
-      ASSERT(FALSE);
+      ASSERT (FALSE);
     }
 
     if (!EFI_ERROR (Status)) {
@@ -112,15 +112,17 @@ InitializeMemoryServices (
         return;
       }
 
-      Status = PopulateMemoryTypeInformation();
+      Status = PopulateMemoryTypeInformation ();
 
       if (EFI_ERROR (Status)) {
         //
         // Couldn't find the memory type information HOB, so we can't set up bins
         //
-        DEBUG ((DEBUG_ERROR,
-          "Memory Type Information HOB not found during memory services initialization but PPI was produced\n"));
-        ASSERT(FALSE);
+        DEBUG ((
+          DEBUG_ERROR,
+          "Memory Type Information HOB not found during memory services initialization but PPI was produced\n"
+          ));
+        ASSERT (FALSE);
         return;
       }
 
@@ -663,6 +665,7 @@ PeiAllocatePages (
   UINTN                 RemainingMemory;
   UINTN                 Granularity;
   UINTN                 Padding;
+  UINTN                 Index;
 
   if ((MemoryType != EfiLoaderCode) &&
       (MemoryType != EfiLoaderData) &&
@@ -712,82 +715,125 @@ PeiAllocatePages (
     FreeMemoryTop    = &(PrivateData->FreePhysicalMemoryTop);
     FreeMemoryBottom = &(PrivateData->PhysicalMemoryBegin);
   } else {
-    FreeMemoryTop    = &(Hob.HandoffInformationTable->EfiFreeMemoryTop);
-    FreeMemoryBottom = &(Hob.HandoffInformationTable->EfiFreeMemoryBottom);
+    // if we are in permanent memory and have memory bins, we need to respect them
+    if (mMemoryTypeInformationInitialized) {
+      FreeMemoryTop    = &(mMemoryTypeStatistics[MemoryType].MaximumAddress);
+      FreeMemoryBottom = &(mMemoryTypeStatistics[MemoryType].BaseAddress);
+      DEBUG ((DEBUG_ERROR, "OSDDEBUG20 AllocatePages: Using memory bin for type %d: Base 0x%lx, Max 0x%lx\n",
+        MemoryType, *FreeMemoryBottom, *FreeMemoryTop));
+    } else {
+      FreeMemoryTop    = &(Hob.HandoffInformationTable->EfiFreeMemoryTop);
+      FreeMemoryBottom = &(Hob.HandoffInformationTable->EfiFreeMemoryBottom);
+    }
   }
 
-  //
-  // Check to see if on correct boundary for the memory type.
-  // If not aligned, make the allocation aligned and that we are not trying to allocate page 0, which is used for
-  // null detection.
-  //
-  Padding = *(FreeMemoryTop) & (Granularity - 1);
-  if (((UINTN)(*FreeMemoryTop - *FreeMemoryBottom) < Padding) || (*(FreeMemoryTop) - Padding == 0)) {
-    DEBUG ((DEBUG_ERROR, "AllocatePages failed: Out of space after padding.\n"));
-    return EFI_OUT_OF_RESOURCES;
-  }
+  for (Index = 0; Index < 2; Index++) {
+    //
+    // Check to see if on correct boundary for the memory type.
+    // If not aligned, make the allocation aligned and that we are not trying to allocate page 0, which is used for
+    // null detection.
+    //
+    Padding = *(FreeMemoryTop) & (Granularity - 1);
+    if (((UINTN)(*FreeMemoryTop - *FreeMemoryBottom) < Padding) || (*(FreeMemoryTop) - Padding == 0)) {
+      if ((Index == 0) && mMemoryTypeInformationInitialized) {
+        //
+        // Try to the default bin before searching memory allocation HOBs
+        //
+        FreeMemoryTop    = &(Hob.HandoffInformationTable->EfiFreeMemoryTop);
+        FreeMemoryBottom = &(Hob.HandoffInformationTable->EfiFreeMemoryBottom);
+        DEBUG ((DEBUG_ERROR, "OSDDEBUG21 AllocatePages: Alignment padding 0x%lx cannot be satisfied in bin for type %d, try default bin\n",
+          (UINT64)Padding, MemoryType));
+        continue;
+      }
 
-  *(FreeMemoryTop) -= Padding;
-  if (Padding >= EFI_PAGE_SIZE) {
-    //
-    // Create a memory allocation HOB to cover
-    // the pages that we will lose to rounding
-    //
-    InternalBuildMemoryAllocationHob (
-      *(FreeMemoryTop),
-      Padding & ~(UINTN)EFI_PAGE_MASK,
-      EfiConventionalMemory
-      );
-  }
-
-  //
-  // Verify that there is sufficient memory to satisfy the allocation.
-  //
-  RemainingMemory = (UINTN)(*FreeMemoryTop - *FreeMemoryBottom);
-  RemainingPages  = (UINTN)(RShiftU64 (RemainingMemory, EFI_PAGE_SHIFT));
-  //
-  // The number of remaining pages needs to be greater than or equal to that of
-  // the request pages. In addition, there should be enough space left to hold a
-  // Memory Allocation HOB.
-  //
-  Pages = ALIGN_VALUE (Pages, EFI_SIZE_TO_PAGES (Granularity));
-  if ((RemainingPages > Pages) ||
-      ((RemainingPages == Pages) &&
-       ((RemainingMemory & EFI_PAGE_MASK) >= sizeof (EFI_HOB_MEMORY_ALLOCATION))))
-  {
-    //
-    // Update the PHIT to reflect the memory usage
-    //
-    *(FreeMemoryTop) -= Pages * EFI_PAGE_SIZE;
-
-    //
-    // Update the value for the caller
-    //
-    *Memory = *(FreeMemoryTop);
-
-    //
-    // Create a memory allocation HOB.
-    //
-    InternalBuildMemoryAllocationHob (
-      *(FreeMemoryTop),
-      Pages * EFI_PAGE_SIZE,
-      MemoryType
-      );
-
-    return EFI_SUCCESS;
-  } else {
-    //
-    // Try to find free memory by searching memory allocation HOBs.
-    //
-    Status = FindFreeMemoryFromMemoryAllocationHob (MemoryType, Pages, Granularity, Memory);
-    if (!EFI_ERROR (Status)) {
-      return Status;
+      goto NotEnoughFreeMemory;
     }
 
-    DEBUG ((DEBUG_ERROR, "AllocatePages failed: No 0x%lx Pages is available.\n", (UINT64)Pages));
-    DEBUG ((DEBUG_ERROR, "There is only left 0x%lx pages memory resource to be allocated.\n", (UINT64)RemainingPages));
-    return EFI_OUT_OF_RESOURCES;
+    *(FreeMemoryTop) -= Padding;
+    if (Padding >= EFI_PAGE_SIZE) {
+      //
+      // Create a memory allocation HOB to cover
+      // the pages that we will lose to rounding
+      //
+      InternalBuildMemoryAllocationHob (
+        *(FreeMemoryTop),
+        Padding & ~(UINTN)EFI_PAGE_MASK,
+        EfiConventionalMemory
+        );
+    }
+
+    //
+    // Verify that there is sufficient memory to satisfy the allocation.
+    //
+    RemainingMemory = (UINTN)(*FreeMemoryTop - *FreeMemoryBottom);
+    RemainingPages  = (UINTN)(RShiftU64 (RemainingMemory, EFI_PAGE_SHIFT));
+    //
+    // The number of remaining pages needs to be greater than or equal to that of
+    // the request pages. In addition, there should be enough space left to hold a
+    // Memory Allocation HOB.
+    //
+    Pages = ALIGN_VALUE (Pages, EFI_SIZE_TO_PAGES (Granularity));
+    if ((RemainingPages > Pages) ||
+        ((RemainingPages == Pages) &&
+         ((RemainingMemory & EFI_PAGE_MASK) >= sizeof (EFI_HOB_MEMORY_ALLOCATION))))
+    {
+      //
+      // Update the PHIT to reflect the memory usage
+      //
+      *(FreeMemoryTop) -= Pages * EFI_PAGE_SIZE;
+
+      //
+      // If this was the default bin, we need to update all other users of the default bin to not overlap
+      //
+      if (mMemoryTypeInformationInitialized == TRUE && mMemoryTypeStatistics[MemoryType].DefaultBin) {
+        for (Index = 0; Index < EfiMaxMemoryType; Index++) {
+          if (mMemoryTypeStatistics[Index].DefaultBin) {
+            mMemoryTypeStatistics[Index].MaximumAddress = *(FreeMemoryTop);
+          }
+        }
+      }
+
+      //
+      // Update the value for the caller
+      //
+      *Memory = *(FreeMemoryTop);
+
+      //
+      // Create a memory allocation HOB.
+      //
+      InternalBuildMemoryAllocationHob (
+        *(FreeMemoryTop),
+        Pages * EFI_PAGE_SIZE,
+        MemoryType
+        );
+
+      return EFI_SUCCESS;
+    }
+
+    if ((Index == 0) && mMemoryTypeInformationInitialized) {
+      //
+      // Try to the default bin before searching memory allocation HOBs
+      //
+      FreeMemoryTop    = &(Hob.HandoffInformationTable->EfiFreeMemoryTop);
+      FreeMemoryBottom = &(Hob.HandoffInformationTable->EfiFreeMemoryBottom);
+      DEBUG ((DEBUG_ERROR, "OSDDEBUG22 AllocatePages: Not enough free memory in bin for type %d, try default bin\n",
+        MemoryType));
+      continue;
+    }
   }
+
+NotEnoughFreeMemory:
+  //
+  // Try to find free memory by searching memory allocation HOBs.
+  //
+  Status = FindFreeMemoryFromMemoryAllocationHob (MemoryType, Pages, Granularity, Memory);
+  if (!EFI_ERROR (Status)) {
+    return Status;
+  }
+
+  DEBUG ((DEBUG_ERROR, "AllocatePages failed: No 0x%lx Pages is available.\n", (UINT64)Pages));
+  DEBUG ((DEBUG_ERROR, "There is only left 0x%lx pages memory resource to be allocated.\n", (UINT64)RemainingPages));
+  return EFI_OUT_OF_RESOURCES;
 }
 
 /**
