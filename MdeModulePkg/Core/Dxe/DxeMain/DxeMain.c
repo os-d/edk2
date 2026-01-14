@@ -24,6 +24,13 @@ EFI_TIMER_ARCH_PROTOCOL           *gTimer         = NULL;
 EFI_BDS_ARCH_PROTOCOL             *gBds           = NULL;
 EFI_WATCHDOG_TIMER_ARCH_PROTOCOL  *gWatchdogTimer = NULL;
 
+EFI_STATUS
+EFIAPI
+UefiBootServicesTableLibConstructor (
+  IN EFI_HANDLE        ImageHandle,
+  IN EFI_SYSTEM_TABLE  *SystemTable
+  );
+
 //
 // DXE Core globals for optional protocol dependencies
 //
@@ -268,6 +275,11 @@ DxeMain (
   // Initialize Debug Agent to support source level debug in DXE phase
   //
   InitializeDebugAgent (DEBUG_AGENT_INIT_DXE_CORE, HobStart, NULL);
+
+  // We need to initialize this lib first so that we can use the lib in setting up memory bins
+  // This will be overridden when we process library constructors later
+  Status = UefiBootServicesTableLibConstructor ((EFI_HANDLE)0x1, &mEfiSystemTableTemplate);
+  ASSERT_EFI_ERROR (Status);
 
   //
   // Initialize Memory Services

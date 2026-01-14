@@ -22,10 +22,10 @@ InitializeMemoryTypeInformationBins (
   IN VOID  **HobList
   )
 {
-  EFI_PHYSICAL_ADDRESS  BaseBinAddress;
-  EFI_PHYSICAL_ADDRESS  EndBinAddress;
-  EFI_PEI_HOB_POINTERS  Hob;
-  UINTN                 Index;
+  EFI_PHYSICAL_ADDRESS         BaseBinAddress;
+  EFI_PHYSICAL_ADDRESS         EndBinAddress;
+  EFI_PEI_HOB_POINTERS         Hob;
+  UINTN                        Index;
   EFI_HOB_RESOURCE_DESCRIPTOR  *MemoryTypeInformationResourceHob;
   EFI_STATUS                   Status;
 
@@ -50,6 +50,7 @@ InitializeMemoryTypeInformationBins (
     goto Fixup_PHIT;
   }
 
+  DEBUG ((DEBUG_ERROR, "%a: No Memory Type Information Resource HOB found\n", __func__));
   // We don't have a Memory Type Information Resource HOB, so we will allocate memory to use for the bins
   // and create the HOB ourselves to inform DXE this is where the bins live.
   AllocateMemoryTypeInformationBins (TRUE);
@@ -57,7 +58,7 @@ InitializeMemoryTypeInformationBins (
 Fixup_PHIT:
   // At this point we have set up our memory bins, so we need to fix up the PHIT to reflect the
   // new memory allocations.
-  Hob.Raw     = ((EFI_PEI_HOB_POINTERS *)HobList)->Raw;
+  Hob.Raw = ((EFI_PEI_HOB_POINTERS *)HobList)->Raw;
 
   if (Hob.Raw == NULL) {
     //
@@ -70,20 +71,20 @@ Fixup_PHIT:
 
   // Find max/min addresses of the bins
   for (Index = 0; (EFI_MEMORY_TYPE)Index < EfiMaxMemoryType; Index++) {
-    if (mMemoryTypeStatistics[Index].NumberOfPages != 0 && !mMemoryTypeStatistics[Index].DefaultBin) {
-        if (mMemoryTypeStatistics[Index].BaseAddress < BaseBinAddress || BaseBinAddress == 0) {
-          BaseBinAddress = mMemoryTypeStatistics[Index].BaseAddress;
-        }
+    if ((mMemoryTypeStatistics[Index].NumberOfPages != 0) && !mMemoryTypeStatistics[Index].DefaultBin) {
+      if ((mMemoryTypeStatistics[Index].BaseAddress < BaseBinAddress) || (BaseBinAddress == 0)) {
+        BaseBinAddress = mMemoryTypeStatistics[Index].BaseAddress;
+      }
 
-        if (mMemoryTypeStatistics[Index].MaximumAddress > EndBinAddress) {
-          EndBinAddress = mMemoryTypeStatistics[Index].MaximumAddress;
-        }
+      if (mMemoryTypeStatistics[Index].MaximumAddress > EndBinAddress) {
+        EndBinAddress = mMemoryTypeStatistics[Index].MaximumAddress;
+      }
     }
-  } 
+  }
 
   DEBUG ((DEBUG_INFO, "%a: Memory bins address range 0x%llx - 0x%llx\n", __func__, BaseBinAddress, EndBinAddress));
   // The bins may or may not intersect the PHIT
-  if (Hob.HandoffInformationTable->EfiFreeMemoryTop > BaseBinAddress && Hob.HandoffInformationTable->EfiFreeMemoryBottom < EndBinAddress) {
+  if ((Hob.HandoffInformationTable->EfiFreeMemoryTop > BaseBinAddress) && (Hob.HandoffInformationTable->EfiFreeMemoryBottom < EndBinAddress)) {
     DEBUG ((DEBUG_INFO, "%a: Fixing up PHIT FreeMemoryTop from 0x%llx to 0x%llx\n", __func__, Hob.HandoffInformationTable->EfiFreeMemoryTop, BaseBinAddress));
     Hob.HandoffInformationTable->EfiFreeMemoryTop = BaseBinAddress;
   }
@@ -132,42 +133,49 @@ InitializeMemoryServices (
     //
     PrivateData->Ps = &(PrivateData->ServiceTableShadow);
   } else {
-    // We have permanent memory now, so we should set up the memory bins if we can find the PPI
-    // that opts in to PEI bins and then the HOB that contains the memory type information.
-    Status = PeiLocatePpi (&PrivateData->Ps, &gInstallPeiMemoryBinsPpiGuid, 0, NULL, NULL);
+    // We have permanent memory now, so we should set up the memory bins if we can.
+    // The memory bin initialization depends on writing to a global variable. This is only safe to do if PEI Core has
+    // been shadowed to permanent memory so that we don't attempt to write to flash.
+    if (OldCoreData->ShadowedPeiCore != NULL)
+    {
+      // find the PPI that opts in to PEI bins and then the HOB that contains the memory type information.
+      Status = PeiLocatePpi ((CONST EFI_PEI_SERVICES **)&PrivateData->Ps, &gInstallPeiMemoryBinsPpiGuid, 0, NULL, NULL);
 
-    if (EFI_ERROR (Status) && (Status != EFI_NOT_FOUND)) {
-      // We hit an unexpected error trying to locate the PPI, we should catch this with an assert, but continue and
-      // skip setting up the memory bins
-      DEBUG ((DEBUG_ERROR, "Failed to locate InstallPeiMemoryBinsPpi with Status %r\n", Status));
-      ASSERT (FALSE);
-    }
-
-    if (!EFI_ERROR (Status)) {
-      Status = PeiGetHobList (&PrivateData->Ps, &HobList);
-      if (EFI_ERROR (Status)) {
-        //
-        // That's not good
-        //
-        ASSERT_EFI_ERROR (Status);
-        return;
-      }
-
-      Status = PopulateMemoryTypeInformation ();
-
-      if (EFI_ERROR (Status)) {
-        //
-        // Couldn't find the memory type information HOB, so we can't set up bins
-        //
-        DEBUG ((
-          DEBUG_ERROR,
-          "Memory Type Information HOB not found during memory services initialization but PPI was produced\n"
-          ));
+      if (EFI_ERROR (Status) && (Status != EFI_NOT_FOUND)) {
+        // We hit an unexpected error trying to locate the PPI, we should catch this with an assert, but continue and
+        // skip setting up the memory bins
+        DEBUG ((DEBUG_ERROR, "Failed to locate InstallPeiMemoryBinsPpi with Status %r\n", Status));
         ASSERT (FALSE);
-        return;
       }
 
-      InitializeMemoryTypeInformationBins (&HobList);
+      if (!EFI_ERROR (Status)) {
+        Status = PeiGetHobList ((CONST EFI_PEI_SERVICES **)&PrivateData->Ps, &HobList);
+        if (EFI_ERROR (Status)) {
+          //
+          // That's not good
+          //
+          ASSERT_EFI_ERROR (Status);
+          return;
+        }
+
+        Status = PopulateMemoryTypeInformation ();
+
+        DEBUG ((DEBUG_ERROR, "OSDDEBUG: %a: PopulateMemoryTypeInformation returned %r\n", __func__, Status));
+
+        if (EFI_ERROR (Status)) {
+          //
+          // Couldn't find the memory type information HOB, so we can't set up bins
+          //
+          DEBUG ((
+            DEBUG_ERROR,
+            "Memory Type Information HOB not found during memory services initialization but PPI was produced\n"
+            ));
+          ASSERT (FALSE);
+          return;
+        }
+
+        InitializeMemoryTypeInformationBins (&HobList);
+      }
     }
   }
 
@@ -734,8 +742,15 @@ PeiAllocatePages (
     if (mMemoryTypeInformationInitialized && !mMemoryTypeStatistics[MemoryType].DefaultBin) {
       FreeMemoryTop    = &(mMemoryTypeStatistics[MemoryType].MaximumAddress);
       FreeMemoryBottom = &(mMemoryTypeStatistics[MemoryType].BaseAddress);
-      DEBUG ((DEBUG_ERROR, "OSDDEBUG20 AllocatePages: Using memory bin for type %d: Base 0x%lx, Max 0x%lx FreeMemoryTop: 0x%llx FreeMemoryBottom: 0x%llx\n",
-        MemoryType, *FreeMemoryBottom, *FreeMemoryTop, Hob.HandoffInformationTable->EfiFreeMemoryTop, Hob.HandoffInformationTable->EfiFreeMemoryBottom));
+      DEBUG ((
+        DEBUG_ERROR,
+        "OSDDEBUG20 AllocatePages: Using memory bin for type %d: Base 0x%lx, Max 0x%lx FreeMemoryTop: 0x%llx FreeMemoryBottom: 0x%llx\n",
+        MemoryType,
+        *FreeMemoryBottom,
+        *FreeMemoryTop,
+        Hob.HandoffInformationTable->EfiFreeMemoryTop,
+        Hob.HandoffInformationTable->EfiFreeMemoryBottom
+        ));
     } else {
       DEBUG ((DEBUG_ERROR, "OSDDEBUG40 AllocatePages: Using default bin for type %d FreeMemoryTop: 0x%llx FreeMemoryBottom: 0x%llx\n", MemoryType, Hob.HandoffInformationTable->EfiFreeMemoryTop, Hob.HandoffInformationTable->EfiFreeMemoryBottom));
       FreeMemoryTop    = &(Hob.HandoffInformationTable->EfiFreeMemoryTop);
@@ -757,8 +772,12 @@ PeiAllocatePages (
         //
         FreeMemoryTop    = &(Hob.HandoffInformationTable->EfiFreeMemoryTop);
         FreeMemoryBottom = &(Hob.HandoffInformationTable->EfiFreeMemoryBottom);
-        DEBUG ((DEBUG_ERROR, "OSDDEBUG21 AllocatePages: Alignment padding 0x%lx cannot be satisfied in bin for type %d, try default bin\n",
-          (UINT64)Padding, MemoryType));
+        DEBUG ((
+          DEBUG_ERROR,
+          "OSDDEBUG21 AllocatePages: Alignment padding 0x%lx cannot be satisfied in bin for type %d, try default bin\n",
+          (UINT64)Padding,
+          MemoryType
+          ));
         continue;
       }
 
@@ -821,8 +840,11 @@ PeiAllocatePages (
       //
       FreeMemoryTop    = &(Hob.HandoffInformationTable->EfiFreeMemoryTop);
       FreeMemoryBottom = &(Hob.HandoffInformationTable->EfiFreeMemoryBottom);
-      DEBUG ((DEBUG_ERROR, "OSDDEBUG22 AllocatePages: Not enough free memory in bin for type %d, try default bin\n",
-        MemoryType));
+      DEBUG ((
+        DEBUG_ERROR,
+        "OSDDEBUG22 AllocatePages: Not enough free memory in bin for type %d, try default bin\n",
+        MemoryType
+        ));
       continue;
     }
   }

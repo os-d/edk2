@@ -127,7 +127,7 @@ EFI_MEMORY_TYPE_STATISTICS  mMemoryTypeStatistics[EfiMaxMemoryType + 1] = {
 BOOLEAN  mMemoryTypeInformationInitialized = FALSE;
 
 /**
-  Calculate total memory bin size needed. This function takes into account runtime page allocation granularity.
+  Calculate total memory bin size needed.
 
   @return The total memory bin size needed.
 
@@ -156,7 +156,8 @@ CalculateTotalMemoryBinSizeNeeded (
       Granularity = RUNTIME_PAGE_ALLOCATION_GRANULARITY;
     }
 
-    TotalSize += ALIGN_VALUE (LShiftU64 (gMemoryTypeInformation[Index].NumberOfPages, EFI_PAGE_SHIFT), Granularity);
+    // gMemoryTypeInformation[Index].NumberOfPages is already aligned to the allocation granularity
+    TotalSize += LShiftU64 (gMemoryTypeInformation[Index].NumberOfPages, EFI_PAGE_SHIFT);
   }
 
   return TotalSize;
@@ -178,19 +179,53 @@ PopulateMemoryTypeInformation (
   UINTN                        DataSize;
   EFI_MEMORY_TYPE_INFORMATION  *EfiMemoryTypeInformation;
   EFI_HOB_GUID_TYPE            *GuidHob;
+  UINTN                        Index;
+  UINTN                        Granularity;
 
+  DEBUG ((DEBUG_ERROR, "OSDDEBUG: %a: Populating Memory Type Information from HOB\n", __func__));
   GuidHob = GetFirstGuidHob (&gEfiMemoryTypeInformationGuid);
+  DEBUG ((DEBUG_ERROR, "OSDDEBUG: %a: GuidHob = 0x%p\n", __func__, GuidHob));
   if (GuidHob != NULL) {
     EfiMemoryTypeInformation = GET_GUID_HOB_DATA (GuidHob);
     DataSize                 = GET_GUID_HOB_DATA_SIZE (GuidHob);
     if ((EfiMemoryTypeInformation != NULL) && (DataSize > 0) && (DataSize <= (EfiMaxMemoryType + 1) * sizeof (EFI_MEMORY_TYPE_INFORMATION))) {
+      // gMemoryTypeInformation[0] = EfiMemoryTypeInformation[0];
+      DEBUG ((DEBUG_ERROR, "OSDDEBUG: %a: Found valid Memory Type Information HOB data gMemoryTypeinformation %llx EfiMemoryTypeInformation %llx DataSize: %llx\n", __func__, gMemoryTypeInformation, EfiMemoryTypeInformation, DataSize));
       CopyMem (&gMemoryTypeInformation, EfiMemoryTypeInformation, DataSize);
+
+      for (Index = 0; gMemoryTypeInformation[Index].Type != EfiMaxMemoryType; Index++) {
+        //
+        // Make sure the memory type in the gMemoryTypeInformation[] array is valid
+        //
+        if (gMemoryTypeInformation[Index].Type > EfiMaxMemoryType) {
+          continue;
+        }
+
+        if (gMemoryTypeInformation[Index].NumberOfPages != 0) {
+          if ((gMemoryTypeInformation[Index].Type == EfiReservedMemoryType) ||
+              (gMemoryTypeInformation[Index].Type == EfiACPIMemoryNVS) ||
+              (gMemoryTypeInformation[Index].Type == EfiRuntimeServicesCode) ||
+              (gMemoryTypeInformation[Index].Type == EfiRuntimeServicesData))
+          {
+            Granularity = RUNTIME_PAGE_ALLOCATION_GRANULARITY;
+          } else {
+            Granularity = DEFAULT_PAGE_ALLOCATION_GRANULARITY;
+          }
+
+          // Align the number of pages to the allocation granularity
+          gMemoryTypeInformation[Index].NumberOfPages = RShiftU64 (ALIGN_VALUE (LShiftU64 (gMemoryTypeInformation[Index].NumberOfPages, EFI_PAGE_SHIFT), Granularity), EFI_PAGE_SHIFT);
+        }
+      }
+
+      DEBUG ((DEBUG_ERROR, "OSDDEBUG: %a: Memory Type Information populated\n", __func__));
       return EFI_SUCCESS;
     }
 
     DEBUG ((DEBUG_ERROR, "%a: Invalid Memory Type Information HOB data\n", __func__));
     ASSERT (FALSE);
   }
+
+  DEBUG ((DEBUG_ERROR, "%a: No Memory Type Information HOB found\n", __func__));
 
   return EFI_NOT_FOUND;
 }
@@ -252,6 +287,8 @@ GetMemoryTypeInformationResourceHob (
     if (ResourceHob->ResourceLength >= CalculateTotalMemoryBinSizeNeeded ()) {
       *MemoryTypeInformationResourceHob = ResourceHob;
     }
+
+    DEBUG ((DEBUG_ERROR, "%a: Found Memory Type Information Resource Descriptor HOB size too small: 0x%llx vs 0x%llx\n", __func__, ResourceHob->ResourceLength, CalculateTotalMemoryBinSizeNeeded ()));
   }
 
   if (Count > 1) {
@@ -318,7 +355,7 @@ CoreSetMemoryTypeInformationRange (
 
     if (gMemoryTypeInformation[Index].NumberOfPages != 0) {
       mMemoryTypeStatistics[Type].MaximumAddress = Top - 1;
-      Top                                       -= EFI_PAGES_TO_SIZE (gMemoryTypeInformation[Index].NumberOfPages);
+      Top                                       -= LShiftU64 (gMemoryTypeInformation[Index].NumberOfPages, EFI_PAGE_SHIFT);
       mMemoryTypeStatistics[Type].BaseAddress    = Top;
 
       DEBUG ((DEBUG_ERROR, "OSDDEBUG45 %a: Memory Type %d assigned bin 0x%llx - 0x%llx\n", __func__, Type, mMemoryTypeStatistics[Type].BaseAddress, mMemoryTypeStatistics[Type].MaximumAddress));
