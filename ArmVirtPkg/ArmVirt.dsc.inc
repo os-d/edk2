@@ -209,6 +209,7 @@ DEFINE FD_SIZE_IN_MB    = 3
 !if $(TARGET) != RELEASE
   DebugLib|ArmVirtPkg/Library/DebugLibFdtPL011Uart/DebugLibFdtPL011UartFlash.inf
 !endif
+  MemoryBinLib|MdeModulePkg/Library/MemoryBinLib/MemoryBinLibPei.inf
 
 [LibraryClasses.common.PEIM]
   PcdLib|MdePkg/Library/PeiPcdLib/PeiPcdLib.inf
@@ -237,6 +238,7 @@ DEFINE FD_SIZE_IN_MB    = 3
   MemoryAllocationLib|MdeModulePkg/Library/DxeCoreMemoryAllocationLib/DxeCoreMemoryAllocationLib.inf
   ExtractGuidedSectionLib|MdePkg/Library/DxeExtractGuidedSectionLib/DxeExtractGuidedSectionLib.inf
   PerformanceLib|MdeModulePkg/Library/DxeCorePerformanceLib/DxeCorePerformanceLib.inf
+  MemoryBinLib|MdeModulePkg/Library/MemoryBinLib/MemoryBinLibDxe.inf
 
 [LibraryClasses.common.DXE_DRIVER]
   SecurityManagementLib|MdeModulePkg/Library/DxeSecurityManagementLib/DxeSecurityManagementLib.inf
@@ -348,8 +350,8 @@ DEFINE FD_SIZE_IN_MB    = 3
   # (the memory used, and the free memory that was prereserved
   # but not used).
   #
-  gEmbeddedTokenSpaceGuid.PcdMemoryTypeEfiACPIReclaimMemory|0
-  gEmbeddedTokenSpaceGuid.PcdMemoryTypeEfiACPIMemoryNVS|0
+  gEmbeddedTokenSpaceGuid.PcdMemoryTypeEfiACPIReclaimMemory|4
+  gEmbeddedTokenSpaceGuid.PcdMemoryTypeEfiACPIMemoryNVS|0x3C
   gEmbeddedTokenSpaceGuid.PcdMemoryTypeEfiReservedMemoryType|0
 !if $(SECURE_BOOT_ENABLE) == TRUE
   gEmbeddedTokenSpaceGuid.PcdMemoryTypeEfiRuntimeServicesData|600
@@ -357,7 +359,7 @@ DEFINE FD_SIZE_IN_MB    = 3
   gEmbeddedTokenSpaceGuid.PcdMemoryTypeEfiBootServicesCode|1500
 !else
   gEmbeddedTokenSpaceGuid.PcdMemoryTypeEfiRuntimeServicesData|300
-  gEmbeddedTokenSpaceGuid.PcdMemoryTypeEfiRuntimeServicesCode|150
+  gEmbeddedTokenSpaceGuid.PcdMemoryTypeEfiRuntimeServicesCode|0x424
   gEmbeddedTokenSpaceGuid.PcdMemoryTypeEfiBootServicesCode|1000
 !endif
   gEmbeddedTokenSpaceGuid.PcdMemoryTypeEfiBootServicesData|12000

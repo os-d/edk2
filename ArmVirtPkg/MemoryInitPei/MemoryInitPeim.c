@@ -15,6 +15,7 @@
 #include <Library/PeiServicesLib.h>
 #include <Library/PcdLib.h>
 #include <Guid/MemoryTypeInformation.h>
+#include <Ppi/InstallPeiMemoryBins.h>
 
 EFI_STATUS
 EFIAPI
@@ -22,6 +23,14 @@ MemoryPeim (
   IN EFI_PHYSICAL_ADDRESS  UefiMemoryBase,
   IN UINT64                UefiMemorySize
   );
+
+EFI_PEI_PPI_DESCRIPTOR  mPpiInstallPeiMemoryBinsPpi[] = {
+  {
+    EFI_PEI_PPI_DESCRIPTOR_PPI | EFI_PEI_PPI_DESCRIPTOR_TERMINATE_LIST,
+    &gInstallPeiMemoryBinsPpiGuid,
+    NULL
+  }
+};
 
 /**
   Build the memory type information HOB that describes how many pages of each
@@ -50,6 +59,18 @@ BuildMemoryTypeInformationHob (
   Info[5].NumberOfPages = 0;
 
   BuildGuidDataHob (&gEfiMemoryTypeInformationGuid, &Info, sizeof (Info));
+  DEBUG ((DEBUG_ERROR, "OSDDEBUG Notifying PEI Core of Memory Type Information HOB creation\n"));
+  PeiServicesInstallPpi (mPpiInstallPeiMemoryBinsPpi);
+
+  BuildResourceDescriptorWithOwnerHob (
+    EFI_RESOURCE_SYSTEM_MEMORY,
+    EFI_RESOURCE_ATTRIBUTE_PRESENT     |     \
+                                       EFI_RESOURCE_ATTRIBUTE_INITIALIZED | \
+                                       EFI_RESOURCE_ATTRIBUTE_TESTED,
+    0x47A55000,
+    0x5A4000,
+    &gEfiMemoryTypeInformationGuid
+    );
 }
 
 /**

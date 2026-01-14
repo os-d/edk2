@@ -55,5 +55,8 @@
   gArmTokenSpaceGuid.PcdSystemMemoryBase
   gArmTokenSpaceGuid.PcdSystemMemorySize
 
+[Ppi]
+  gInstallPeiMemoryBinsPpiGuid
+
 [Depex]
   TRUE
