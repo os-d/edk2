@@ -299,50 +299,6 @@ GetMemoryTypeInformationResourceHob (
   return EFI_SUCCESS;
 }
 
-// STATIC
-// VOID
-// UpdateStatsFromMemoryAllocationHobs (
-//   VOID
-//   )
-// {
-//   EFI_PEI_HOB_POINTERS         Hob;
-//   EFI_HOB_MEMORY_ALLOCATION    *MemoryAllocationHob;
-//   EFI_MEMORY_TYPE              Type;
-
-//   //
-//   // Loop through all Memory Allocation HOBs and update the statistics
-//   //
-//   for (Hob.Raw = GetHobList (); !END_OF_HOB_LIST (Hob); Hob.Raw = GET_NEXT_HOB (Hob)) {
-//     if (GET_HOB_TYPE (Hob) != EFI_HOB_TYPE_MEMORY_ALLOCATION) {
-//       continue;
-//     }
-
-//     MemoryAllocationHob = Hob.MemoryAllocation;
-//     Type                = (EFI_MEMORY_TYPE)(MemoryAllocationHob->AllocDescriptor.MemoryType);
-//     if ((UINT32)Type > EfiMaxMemoryType) {
-//       continue;
-//     }
-
-//     if ((MemoryAllocationHob->AllocDescriptor.MemoryBaseAddress >= mMemoryTypeStatistics[Type].BaseAddress) &&
-//         (MemoryAllocationHob->AllocDescriptor.MemoryBaseAddress <= mMemoryTypeStatistics[Type].MaximumAddress))
-//     {
-//       mMemoryTypeStatistics[Type].CurrentNumberOfPages +=
-//         (UINTN)(RShiftU64 (MemoryAllocationHob->AllocDescriptor.MemoryLength, EFI_PAGE_SHIFT));
-//     }
-
-//     if (NewType < EfiMaxMemoryType) {
-//     if (((Start >= mMemoryTypeStatistics[NewType].BaseAddress) && (Start <= mMemoryTypeStatistics[NewType].MaximumAddress)) ||
-//         ((Start >= mDefaultBaseAddress) && (Start <= mDefaultMaximumAddress)))
-//     {
-//       mMemoryTypeStatistics[NewType].CurrentNumberOfPages += NumberOfPages;
-//       if (mMemoryTypeStatistics[NewType].CurrentNumberOfPages > gMemoryTypeInformation[mMemoryTypeStatistics[NewType].InformationIndex].NumberOfPages) {
-//         gMemoryTypeInformation[mMemoryTypeStatistics[NewType].InformationIndex].NumberOfPages = (UINT32)mMemoryTypeStatistics[NewType].CurrentNumberOfPages;
-//       }
-//     }
-//   }
-//   }
-// }
-
 /**
   Sets the preferred memory range to use for the Memory Type Information bins.
   This service must be called before fist call to CoreAddMemoryDescriptor().
@@ -434,8 +390,6 @@ CoreSetMemoryTypeInformationRange (
       mMemoryTypeStatistics[Type].DefaultBin     = TRUE;
     }
   }
-
-  // UpdateStatsFromMemoryAllocationHobs ();
 
   mMemoryTypeInformationInitialized = TRUE;
 }
