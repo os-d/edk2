@@ -842,7 +842,9 @@ PeiAllocatePages (
       FreeMemoryBottom = &(Hob.HandoffInformationTable->EfiFreeMemoryBottom);
       DEBUG ((
         DEBUG_ERROR,
-        "OSDDEBUG22 AllocatePages: Not enough free memory in bin for type %d, try default bin\n",
+        "OSDDEBUG22 AllocatePages: Not enough free memory (0x%llx) need 0x%llx pages in bin for type %d, try default bin\n",
+        (UINT64)RemainingPages,
+        (UINT64)Pages,
         MemoryType
         ));
       continue;

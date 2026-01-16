@@ -180,7 +180,7 @@ PopulateMemoryTypeInformation (
   EFI_MEMORY_TYPE_INFORMATION  *EfiMemoryTypeInformation;
   EFI_HOB_GUID_TYPE            *GuidHob;
   UINTN                        Index;
-  UINTN                        Granularity;
+  UINT32                       Granularity;
 
   DEBUG ((DEBUG_ERROR, "OSDDEBUG: %a: Populating Memory Type Information from HOB\n", __func__));
   GuidHob = GetFirstGuidHob (&gEfiMemoryTypeInformationGuid);
@@ -213,7 +213,7 @@ PopulateMemoryTypeInformation (
           }
 
           // Align the number of pages to the allocation granularity
-          gMemoryTypeInformation[Index].NumberOfPages = RShiftU64 (ALIGN_VALUE (LShiftU64 (gMemoryTypeInformation[Index].NumberOfPages, EFI_PAGE_SHIFT), Granularity), EFI_PAGE_SHIFT);
+          gMemoryTypeInformation[Index].NumberOfPages = (UINT32)RShiftU64 (ALIGN_VALUE (LShiftU64 (gMemoryTypeInformation[Index].NumberOfPages, EFI_PAGE_SHIFT), Granularity), EFI_PAGE_SHIFT);
         }
       }
 
@@ -298,6 +298,50 @@ GetMemoryTypeInformationResourceHob (
 
   return EFI_SUCCESS;
 }
+
+// STATIC
+// VOID
+// UpdateStatsFromMemoryAllocationHobs (
+//   VOID
+//   )
+// {
+//   EFI_PEI_HOB_POINTERS         Hob;
+//   EFI_HOB_MEMORY_ALLOCATION    *MemoryAllocationHob;
+//   EFI_MEMORY_TYPE              Type;
+
+//   //
+//   // Loop through all Memory Allocation HOBs and update the statistics
+//   //
+//   for (Hob.Raw = GetHobList (); !END_OF_HOB_LIST (Hob); Hob.Raw = GET_NEXT_HOB (Hob)) {
+//     if (GET_HOB_TYPE (Hob) != EFI_HOB_TYPE_MEMORY_ALLOCATION) {
+//       continue;
+//     }
+
+//     MemoryAllocationHob = Hob.MemoryAllocation;
+//     Type                = (EFI_MEMORY_TYPE)(MemoryAllocationHob->AllocDescriptor.MemoryType);
+//     if ((UINT32)Type > EfiMaxMemoryType) {
+//       continue;
+//     }
+
+//     if ((MemoryAllocationHob->AllocDescriptor.MemoryBaseAddress >= mMemoryTypeStatistics[Type].BaseAddress) &&
+//         (MemoryAllocationHob->AllocDescriptor.MemoryBaseAddress <= mMemoryTypeStatistics[Type].MaximumAddress))
+//     {
+//       mMemoryTypeStatistics[Type].CurrentNumberOfPages +=
+//         (UINTN)(RShiftU64 (MemoryAllocationHob->AllocDescriptor.MemoryLength, EFI_PAGE_SHIFT));
+//     }
+
+//     if (NewType < EfiMaxMemoryType) {
+//     if (((Start >= mMemoryTypeStatistics[NewType].BaseAddress) && (Start <= mMemoryTypeStatistics[NewType].MaximumAddress)) ||
+//         ((Start >= mDefaultBaseAddress) && (Start <= mDefaultMaximumAddress)))
+//     {
+//       mMemoryTypeStatistics[NewType].CurrentNumberOfPages += NumberOfPages;
+//       if (mMemoryTypeStatistics[NewType].CurrentNumberOfPages > gMemoryTypeInformation[mMemoryTypeStatistics[NewType].InformationIndex].NumberOfPages) {
+//         gMemoryTypeInformation[mMemoryTypeStatistics[NewType].InformationIndex].NumberOfPages = (UINT32)mMemoryTypeStatistics[NewType].CurrentNumberOfPages;
+//       }
+//     }
+//   }
+//   }
+// }
 
 /**
   Sets the preferred memory range to use for the Memory Type Information bins.
@@ -390,6 +434,8 @@ CoreSetMemoryTypeInformationRange (
       mMemoryTypeStatistics[Type].DefaultBin     = TRUE;
     }
   }
+
+  // UpdateStatsFromMemoryAllocationHobs ();
 
   mMemoryTypeInformationInitialized = TRUE;
 }
@@ -546,25 +592,18 @@ UpdateMemoryStatistics (
   // Update counters for the number of pages allocated to each memory type
   //
   if (OldType < EfiMaxMemoryType) {
-    if (((Start >= mMemoryTypeStatistics[OldType].BaseAddress) && (Start <= mMemoryTypeStatistics[OldType].MaximumAddress)) ||
-        ((Start >= mDefaultBaseAddress) && (Start <= mDefaultMaximumAddress)))
-    {
-      if (NumberOfPages > mMemoryTypeStatistics[OldType].CurrentNumberOfPages) {
-        mMemoryTypeStatistics[OldType].CurrentNumberOfPages = 0;
-      } else {
-        mMemoryTypeStatistics[OldType].CurrentNumberOfPages -= NumberOfPages;
-      }
+    if (NumberOfPages > mMemoryTypeStatistics[OldType].CurrentNumberOfPages) {
+      mMemoryTypeStatistics[OldType].CurrentNumberOfPages = 0;
+    } else {
+      mMemoryTypeStatistics[OldType].CurrentNumberOfPages -= NumberOfPages;
     }
   }
 
+  // DEBUG ((DEBUG_ERROR, "OSDDEBUG201 Update memory statistics for allocated memory: OldType=%d, NewType=%d, Start=%llx, Pages=%llx, mDefaultBaseAddress=%llx, mDefaultMaximumAddress=%llx\n", OldType, NewType, Start, NumberOfPages, mDefaultBaseAddress, mDefaultMaximumAddress));
   if (NewType < EfiMaxMemoryType) {
-    if (((Start >= mMemoryTypeStatistics[NewType].BaseAddress) && (Start <= mMemoryTypeStatistics[NewType].MaximumAddress)) ||
-        ((Start >= mDefaultBaseAddress) && (Start <= mDefaultMaximumAddress)))
-    {
-      mMemoryTypeStatistics[NewType].CurrentNumberOfPages += NumberOfPages;
-      if (mMemoryTypeStatistics[NewType].CurrentNumberOfPages > gMemoryTypeInformation[mMemoryTypeStatistics[NewType].InformationIndex].NumberOfPages) {
-        gMemoryTypeInformation[mMemoryTypeStatistics[NewType].InformationIndex].NumberOfPages = (UINT32)mMemoryTypeStatistics[NewType].CurrentNumberOfPages;
-      }
+    mMemoryTypeStatistics[NewType].CurrentNumberOfPages += NumberOfPages;
+    if (mMemoryTypeStatistics[NewType].CurrentNumberOfPages > gMemoryTypeInformation[mMemoryTypeStatistics[NewType].InformationIndex].NumberOfPages) {
+      gMemoryTypeInformation[mMemoryTypeStatistics[NewType].InformationIndex].NumberOfPages = (UINT32)mMemoryTypeStatistics[NewType].CurrentNumberOfPages;
     }
   }
 }

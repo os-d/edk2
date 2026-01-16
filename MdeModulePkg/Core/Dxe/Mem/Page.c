@@ -537,6 +537,15 @@ CoreAddMemoryDescriptor (
   // Check if we need to allocate the memory bins. This function will immediately return if we have already done so.
   // Pass FALSE to indicate that we do not need to create the resource HOB.
   AllocateMemoryTypeInformationBins (FALSE);
+
+  // Capture any newly added memory in the memory statistics. These generally will be from pre-DXE memory allocations.
+  // DEBUG ((DEBUG_ERROR, "OSDDEBUG200 Update memory statistics for added memory: Type=%d, Start=%lx, Pages=%lx\n", Type, Start, NumberOfPages));
+  UpdateMemoryStatistics (
+        EfiConventionalMemory,
+        Type,
+        Start,
+        NumberOfPages
+        );
 }
 
 /**
