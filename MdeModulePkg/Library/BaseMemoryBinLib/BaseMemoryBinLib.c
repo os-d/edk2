@@ -9,16 +9,18 @@
 
 #include <Uefi/UefiBaseType.h>
 #include <Uefi/UefiMultiPhase.h>
+#include <Pi/PiMultiPhase.h>
 
 #include <Guid/MemoryTypeInformation.h>
 
+#include <Pi/PiHob.h>
+
 #include <Library/BaseLib.h>
 #include <Library/BaseMemoryLib.h>
-#include <Library/MemoryBinLib.h>
 #include <Library/DebugLib.h>
 #include <Library/HobLib.h>
-
-#include <Pi/PiHob.h>
+#include <Library/MemoryAllocationLib.h>
+#include <Library/MemoryBinLib.h>
 
 #define MEMORY_ATTRIBUTE_MASK  (EFI_RESOURCE_ATTRIBUTE_PRESENT             |        \
                                        EFI_RESOURCE_ATTRIBUTE_INITIALIZED         | \
@@ -36,50 +38,6 @@
 #define TESTED_MEMORY_ATTRIBUTES  (EFI_RESOURCE_ATTRIBUTE_PRESENT     |     \
                                        EFI_RESOURCE_ATTRIBUTE_INITIALIZED | \
                                        EFI_RESOURCE_ATTRIBUTE_TESTED      )
-
-/**
-  Allocates pages from the memory map.
-
-  @param  Type                   The type of allocation to perform
-  @param  MemoryType             The type of memory to turn the allocated pages
-                                 into
-  @param  NumberOfPages          The number of pages to allocate
-  @param  Memory                 A pointer to receive the base allocated memory
-                                 address
-
-  @return Status. On success, Memory is filled in with the base address allocated
-  @retval EFI_INVALID_PARAMETER  Parameters violate checking rules defined in
-                                 spec.
-  @retval EFI_NOT_FOUND          Could not allocate pages match the requirement.
-  @retval EFI_OUT_OF_RESOURCES   No enough pages to allocate.
-  @retval EFI_SUCCESS            Pages successfully allocated.
-
-**/
-EFI_STATUS
-EFIAPI
-AllocateBinPages (
-  IN  EFI_MEMORY_TYPE       MemoryType,
-  IN  UINTN                 NumberOfPages,
-  OUT EFI_PHYSICAL_ADDRESS  *Memory
-  );
-
-/**
-  Frees previous allocated pages.
-
-  @param  Memory                 Base address of memory being freed
-  @param  NumberOfPages          The number of pages to free
-
-  @retval EFI_NOT_FOUND          Could not find the entry that covers the range
-  @retval EFI_INVALID_PARAMETER  Address not aligned
-  @return EFI_SUCCESS         -Pages successfully freed.
-
-**/
-EFI_STATUS
-EFIAPI
-FreeBinPages (
-  IN EFI_PHYSICAL_ADDRESS  Memory,
-  IN UINTN                 NumberOfPages
-  );
 
 EFI_PHYSICAL_ADDRESS  mDefaultMaximumAddress = MAX_ALLOC_ADDRESS;
 EFI_PHYSICAL_ADDRESS  mDefaultBaseAddress    = MAX_ALLOC_ADDRESS;
@@ -411,7 +369,6 @@ AllocateMemoryTypeInformationBins (
   )
 {
   UINTN                 Index;
-  EFI_STATUS            Status;
   EFI_MEMORY_TYPE       Type;
   EFI_PHYSICAL_ADDRESS  BaseAddress;
   EFI_PHYSICAL_ADDRESS  LastBinAddress;
@@ -435,13 +392,11 @@ AllocateMemoryTypeInformationBins (
 
   // To ensure we get a contiguous range of memory for our bins, we will attempt to allocate
   // all of the memory needed in one go. If that works, we can then carve it up into the individual bins.
-  Status = AllocateBinPages (
-             EfiBootServicesData,
-             RShiftU64 (RequiredSize, EFI_PAGE_SHIFT),
-             &BaseAddress
+  BaseAddress = (EFI_PHYSICAL_ADDRESS)AllocatePages (
+             RShiftU64 (RequiredSize, EFI_PAGE_SHIFT)
              );
 
-  if (EFI_ERROR (Status)) {
+  if (BaseAddress == 0) {
     DEBUG ((DEBUG_ERROR, "%a: Could not allocate contiguous pages for all memory bins\n", __func__));
     ASSERT (FALSE);
     return;
@@ -475,8 +430,8 @@ AllocateMemoryTypeInformationBins (
   // those memory areas can be freed for future allocations, and all future memory
   // allocations can occur within their respective bins
   //
-  FreeBinPages (
-    BaseAddress,
+  FreePages (
+    (VOID *)BaseAddress,
     RShiftU64 (RequiredSize, EFI_PAGE_SHIFT)
     );
   for (Index = 0; gMemoryTypeInformation[Index].Type != EfiMaxMemoryType; Index++) {
