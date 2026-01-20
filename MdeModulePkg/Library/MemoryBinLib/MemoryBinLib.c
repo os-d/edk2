@@ -426,6 +426,10 @@ AllocateMemoryTypeInformationBins (
 
   BaseAddress  = 0;
   RequiredSize = CalculateTotalMemoryBinSizeNeeded ();
+  if (RequiredSize == 0) {
+    mMemoryTypeInformationInitialized = TRUE;
+    return;
+  }
 
   DEBUG ((DEBUG_ERROR, "%a: Attempting to allocate 0x%llx bytes for all memory bins\n", __func__, RequiredSize));
 
