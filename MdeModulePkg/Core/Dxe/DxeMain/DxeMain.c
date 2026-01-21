@@ -276,11 +276,6 @@ DxeMain (
   //
   InitializeDebugAgent (DEBUG_AGENT_INIT_DXE_CORE, HobStart, NULL);
 
-  // We need to initialize this lib first so that we can use the lib in setting up memory bins
-  // This will be overridden when we process library constructors later
-  Status = UefiBootServicesTableLibConstructor ((EFI_HANDLE)0x1, &mEfiSystemTableTemplate);
-  ASSERT_EFI_ERROR (Status);
-
   //
   // Initialize Memory Services
   //
