@@ -278,7 +278,7 @@ CoreSetMemoryTypeInformationRange (
   EFI_PHYSICAL_ADDRESS  Top;
   EFI_MEMORY_TYPE       Type;
   UINTN                 Index;
-  UINTN                 Size;
+  UINT64                 Size;
 
   //
   // Return if Memory Type Information bin locations have already been set
@@ -372,7 +372,7 @@ AllocateMemoryTypeInformationBins (
   EFI_MEMORY_TYPE       Type;
   EFI_PHYSICAL_ADDRESS  BaseAddress;
   EFI_PHYSICAL_ADDRESS  LastBinAddress;
-  UINTN                 RequiredSize;
+  UINT64                 RequiredSize;
 
   //
   // Check to see if the statistics for the different memory types have already been established
@@ -393,7 +393,7 @@ AllocateMemoryTypeInformationBins (
   // To ensure we get a contiguous range of memory for our bins, we will attempt to allocate
   // all of the memory needed in one go. If that works, we can then carve it up into the individual bins.
   BaseAddress = (EFI_PHYSICAL_ADDRESS)AllocatePages (
-             RShiftU64 (RequiredSize, EFI_PAGE_SHIFT)
+             (UINTN)RShiftU64 (RequiredSize, EFI_PAGE_SHIFT)
              );
 
   if (BaseAddress == 0) {
@@ -431,8 +431,8 @@ AllocateMemoryTypeInformationBins (
   // allocations can occur within their respective bins
   //
   FreePages (
-    (VOID *)BaseAddress,
-    RShiftU64 (RequiredSize, EFI_PAGE_SHIFT)
+    (VOID *)(UINTN)BaseAddress,
+    (UINTN)RShiftU64 (RequiredSize, EFI_PAGE_SHIFT)
     );
   for (Index = 0; gMemoryTypeInformation[Index].Type != EfiMaxMemoryType; Index++) {
     //
