@@ -45,7 +45,6 @@ EFI_LOCK    mGcdMemorySpaceLock = EFI_INITIALIZE_LOCK_VARIABLE (TPL_NOTIFY);
 EFI_LOCK    mGcdIoSpaceLock     = EFI_INITIALIZE_LOCK_VARIABLE (TPL_NOTIFY);
 LIST_ENTRY  mGcdMemorySpaceMap  = INITIALIZE_LIST_HEAD_VARIABLE (mGcdMemorySpaceMap);
 LIST_ENTRY  mGcdIoSpaceMap      = INITIALIZE_LIST_HEAD_VARIABLE (mGcdIoSpaceMap);
-EFI_GUID    mPeiCoreFileGuid    = { 0x52C05B14, 0x0B98, 0x496c, { 0xBC, 0x3B, 0x04, 0xB5, 0x02, 0x11, 0xD6, 0x80 } };
 
 EFI_GCD_MAP_ENTRY  mGcdMemorySpaceMapEntryTemplate = {
   EFI_GCD_MAP_SIGNATURE,
@@ -2788,7 +2787,7 @@ CoreInitializeGcdServices (
             );
 
           // if this Memory Allocation HOB came from PEI, update the memory bin statistics
-          if (CompareGuid (&MemoryHob->AllocDescriptor.Name, &mPeiCoreFileGuid)) {
+          if (CompareGuid (&MemoryHob->AllocDescriptor.Name, &gEfiMemoryTypeInformationGuid)) {
             DEBUG ((
               DEBUG_ERROR,
               "OSDDEBUG222 Memory Allocation Hob: Type=%d, Start=%llx, Pages=%llx, Range=0x%llx-0x%llx\n",

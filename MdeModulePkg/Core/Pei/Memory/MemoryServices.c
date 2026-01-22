@@ -440,7 +440,7 @@ InternalBuildMemoryAllocationHob (
   // Otherwise, just produce a HOB with a zeroed GUID.
   //
   if (mMemoryTypeInformationInitialized) {
-    CopyGuid (&(MemoryAllocationHob->AllocDescriptor.Name), &gEfiCallerIdGuid);
+    CopyGuid (&(MemoryAllocationHob->AllocDescriptor.Name), &gEfiMemoryTypeInformationGuid);
   } else {
     ZeroMem (&(MemoryAllocationHob->AllocDescriptor.Name), sizeof (EFI_GUID));
   }

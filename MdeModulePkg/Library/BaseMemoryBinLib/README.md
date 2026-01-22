@@ -109,9 +109,8 @@ Finally, PEI core will update the PHIT free memory region to exclude the memory 
 ##### PEI Operation
 
 When PEI_SERVICES.AllocatePages() is called, PEI core will attempt to allocate the request in the memory bin, if
-defined (see #OSDDEBUG_FILL_IN for phase agnostic memory bin details). If the request fails, PEI core will fall back
-to its standard allocation mechanism: attempt to allocate from the PHIT free memory, if there is not enough space,
-look for a free memory memory allocation HOB.
+defined. If the request fails, PEI core will fall back to its standard allocation mechanism: attempt to allocate from
+the PHIT free memory, if there is not enough space, look for a free memory memory allocation HOB.
 
 When PEI_SERVICES.FreePages() is called, PEI core will free the pages as normal.
 
@@ -119,6 +118,15 @@ As with allocating from the PHIT HOB, PEI core will only ever walk down the memo
 new allocations are given the requested size down from the top of the bin and freeing pages does not increase the
 available range in the bin. This is done to keep the PEI allocator simple and because most runtime allocations are
 expected in DXE.
+
+PEI core will mark all of the Memory Allocation HOBs its allocator produces with gEfiMemoryTypeInformationGuid.
+This is done so that DXE can use the Memory Allocation HOBs to build bin statistics, e.g. which allocations landed
+within a bin and which landed outside of a bin. Updating the Name field of the Memory Allocation HOB allows DXE Core to
+distinguish between allocations that PEI Core made and are subject to bin rules and those that were before the PEI bins
+were setup; platforms may produce Memory Allocation HOBs to specify static runtime regions. These should not be included
+in the bin logic. If PEI Core is not configured to use memory bins, it will not mark its allocator created Memory
+Allocation HOBs with the PEI Core GUID. DXE will then ignore all pre-DXE memory allocations and how they fall into the
+bins or not.
 
 #### DXE Memory Bins
 
@@ -135,9 +143,10 @@ bins will not be initialized. It will then look for a Resource Descriptor HOB wi
 If this HOB is present, the DXE memory bins will be at this location. If it is not present, DXE will allocate memory
 bins.
 
-If the Resource Descriptor HOB was present, DXE core will process through the Memory Allocation HOBs to discover if any
-bin types have been allocated pre-DXE and whether they fall in or out of the defined bin range. DXE core will seed its
-memory statistics with this information. See #BDS-Setup for information on how the memory statistics are used.
+If the Resource Descriptor HOB was present, DXE core will process through the Memory Allocation HOBs that have the
+gEfiMemoryTypeInformationGuid to discover if any bin types have been allocated pre-DXE and whether they fall in or out
+of the defined bin range. DXE core will seed its memory statistics with this information. See #BDS-Setup for information
+on how the memory statistics are used.
 
 ##### DXE Operation
 
@@ -153,35 +162,39 @@ that the number of pages either in or out of the bin are not being used.
 The DXE allocator is much smarter than the PEI allocator and does account for bin pages freed back and allows them to
 be allocated again.
 
-DXE core will publish the [#OSDDEBUG_FILL_IN]() config table to publish the memory statistics for BDS to consume to
+DXE core will publish the
+[gMemoryTypeInformationStatisticsGuid](https://github.com/os-d/edk2/blob/6d28d9be216bc67c09fdca9707f44a87af0f540b/MdeModulePkg/Include/Guid/MemoryTypeInformation.h#L35)
+config table to publish the memory statistics for BDS to consume to
 advise a platform on the correct memory bin size and range. See #BDS-Advisement for more details.
 
 When EFI_BOOT_SERVICES.GetMemoryMap() is called, DXE core will create a single EFI_MEMORY_DESCRIPTOR for each memory
 bin.
 
-#### BDS Advisement
+#### BDS Advertisement
 
 [UefiBootManagerLib](https://github.com/tianocore/edk2/tree/HEAD/MdeModulePkg/Library/UefiBootManagerLib) has a
 mechanism to advise a platform on the ideal bin size and location for S4 stability based on the current boot memory
 statistics that DXE has collected.
 
 Just before launching a given boot option, UefiBootManagerLib (generally called BDS for brevity below) consumes the
-OSDDEBUG_FILL_IN config table that DXE core has produced. It reads the memory bin location, currently used bin pages
-and currently used non-bin pages for each memory type and uses a heuristic to calculate the ideal number of pages for
-each memory bin. It then writes the gEfiMemoryTypeInformation.MemoryTypeInformation variable to give the platform each
-recommended memory bin size for S4 stability. If the bin size is recommended to change, BDS will delete the
-[OSDDEBUG_FILL_IN]() variable. If the bin size is not recommended to change, BDS will write the recommended bin location
-and total size to the OSDDEBUG_FILL_IN variable. BDS will optionally reboot the system if the bin size has changed,
+gMemoryTypeInformationStatisticsGuid config table that DXE core has produced. It reads the memory bin location,
+currently used bin pages and currently used non-bin pages for each memory type and uses a heuristic to calculate the
+ideal number of pages for each memory bin. It then writes the gEfiMemoryTypeInformation.MemoryTypeInformation variable
+to give the platform each recommended memory bin size for S4 stability. If the bin size is recommended to change,
+BDS will delete the
+[gEfiMemoryTypeInformation.MemoryTypeInformationBinsRange](https://github.com/os-d/edk2/blob/6d28d9be216bc67c09fdca9707f44a87af0f540b/MdeModulePkg/Include/Guid/MemoryTypeInformation.h#L28)
+variable. If the bin size is not recommended to change, BDS will write the recommended bin location and total size to
+the MemoryTypeInformationBinsRange variable. BDS will optionally reboot the system if the bin size has changed,
 depending on
 [PcdResetOnMemoryTypeInformationChange](https://github.com/tianocore/edk2/blob/HEAD/MdeModulePkg/MdeModulePkg.dec#L1930).
 
 ##### Platform Adjustments
 
 Prior to post-mem PEI, it is recommended that the platform consume the gEfiMemoryTypeInformation.MemoryTypeInformation
-variable and the OSDDEBUG_FILL_IN variable, if present. Then, the platform can use the BDS recommended values to create
-the Memory Type Information HOB. If the OSDDEBUG_FILL_IN variable exists, the platform can create the
-gEfiMemoryTypeInformationGuid owned Resource Descriptor HOB to ensure the bins are always allocated at the same
-addresses for the best S4 stability.
+variable and the MemoryTypeInformationBinsRange variable, if present. Then, the platform can use the BDS recommended
+values to create the Memory Type Information HOB. If the MemoryTypeInformationBinsRange variable exists, the platform
+can create the gEfiMemoryTypeInformationGuid owned Resource Descriptor HOB to ensure the bins are always allocated at
+the same addresses for the best S4 stability.
 
 #### End-to-End Diagrams
 
@@ -267,12 +280,8 @@ flowchart TD
     GetMemoryMap --> CreateDescriptor[Create EFI_MEMORY_DESCRIPTOR<br/>for Each Bin]
     CreateDescriptor --> OSRuntime[OS Runtime]
     
-    style PEIPath fill:#e1f5ff
-    style DXEOnlyPath fill:#fff4e1
-    style DXEOnlyPath fill:#5c4a1f,color:#fff
     style ResourceHOB fill:#d4edda
     style NoResourceHOB fill:#f8d7da
-    style PEIPath fill:#1e3a5f,color:#fff
     style DXEOnly fill:#5c4a1f,color:#fff
     style ResourceHOB fill:#1f4a2f,color:#fff
     style NoResourceHOB fill:#5a2a2a,color:#fff
