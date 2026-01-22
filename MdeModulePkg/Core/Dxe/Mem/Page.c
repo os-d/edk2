@@ -537,15 +537,6 @@ CoreAddMemoryDescriptor (
   // Check if we need to allocate the memory bins. This function will immediately return if we have already done so.
   // Pass FALSE to indicate that we do not need to create the resource HOB.
   AllocateMemoryTypeInformationBins (FALSE);
-
-  // Capture any newly added memory in the memory statistics. These generally will be from pre-DXE memory allocations.
-  // DEBUG ((DEBUG_ERROR, "OSDDEBUG200 Update memory statistics for added memory: Type=%d, Start=%lx, Pages=%lx\n", Type, Start, NumberOfPages));
-  UpdateMemoryStatistics (
-        EfiConventionalMemory,
-        Type,
-        Start,
-        NumberOfPages
-        );
 }
 
 /**
@@ -1015,13 +1006,13 @@ FindFreePages (
   //
   // Attempt to find free pages in the preferred bin based on the requested memory type
   //
-  if ((NewType < EfiMaxMemoryType) && (MaxAddress >= mMemoryTypeStatistics[NewType].MaximumAddress)) {
+  if ((NewType < EfiMaxMemoryType) && (MaxAddress >= mMemoryTypeStatistics.Statistics[NewType].MaximumAddress)) {
     if (NewType != 4) {
-      DEBUG((DEBUG_ERROR, "OSDDEBUG8 FindFreePages: Trying preferred bin for type %d in range 0x%llx - 0x%llx\n", NewType, mMemoryTypeStatistics[NewType].BaseAddress, mMemoryTypeStatistics[NewType].MaximumAddress));
+      DEBUG((DEBUG_ERROR, "OSDDEBUG8 FindFreePages: Trying preferred bin for type %d in range 0x%llx - 0x%llx\n", NewType, mMemoryTypeStatistics.Statistics[NewType].BaseAddress, mMemoryTypeStatistics.Statistics[NewType].MaximumAddress));
     }
     Start = CoreFindFreePagesI (
-              mMemoryTypeStatistics[NewType].MaximumAddress,
-              mMemoryTypeStatistics[NewType].BaseAddress,
+              mMemoryTypeStatistics.Statistics[NewType].MaximumAddress,
+              mMemoryTypeStatistics.Statistics[NewType].BaseAddress,
               NoPages,
               NewType,
               Alignment,
@@ -1218,23 +1209,23 @@ CoreInternalAllocatePages (
 
     for (CheckType = (EFI_MEMORY_TYPE)0; CheckType < EfiMaxMemoryType; CheckType++) {
       if ((MemoryType != CheckType) &&
-          mMemoryTypeStatistics[CheckType].Special &&
-          (mMemoryTypeStatistics[CheckType].NumberOfPages > 0))
+          mMemoryTypeStatistics.Statistics[CheckType].Special &&
+          (mMemoryTypeStatistics.Statistics[CheckType].BinNumberOfPages > 0))
       {
-        if ((Start >= mMemoryTypeStatistics[CheckType].BaseAddress) &&
-            (Start <= mMemoryTypeStatistics[CheckType].MaximumAddress))
+        if ((Start >= mMemoryTypeStatistics.Statistics[CheckType].BaseAddress) &&
+            (Start <= mMemoryTypeStatistics.Statistics[CheckType].MaximumAddress))
         {
           return EFI_NOT_FOUND;
         }
 
-        if ((End >= mMemoryTypeStatistics[CheckType].BaseAddress) &&
-            (End <= mMemoryTypeStatistics[CheckType].MaximumAddress))
+        if ((End >= mMemoryTypeStatistics.Statistics[CheckType].BaseAddress) &&
+            (End <= mMemoryTypeStatistics.Statistics[CheckType].MaximumAddress))
         {
           return EFI_NOT_FOUND;
         }
 
-        if ((Start < mMemoryTypeStatistics[CheckType].BaseAddress) &&
-            (End   > mMemoryTypeStatistics[CheckType].MaximumAddress))
+        if ((Start < mMemoryTypeStatistics.Statistics[CheckType].BaseAddress) &&
+            (End   > mMemoryTypeStatistics.Statistics[CheckType].MaximumAddress))
         {
           return EFI_NOT_FOUND;
         }
@@ -1633,7 +1624,7 @@ SetEfiMemoryDescriptorType (
     return;
   }
 
-  if (mMemoryTypeStatistics[MemoryMap->Type].Runtime) {
+  if (mMemoryTypeStatistics.Statistics[MemoryMap->Type].Runtime) {
     MemoryMap->Attribute |= EFI_MEMORY_RUNTIME;
   } else {
     MemoryMap->Attribute &= ~EFI_MEMORY_RUNTIME;
@@ -1756,8 +1747,8 @@ CoreGetMemoryMap (
   // requires an extra entry below the bin and an extra entry above the bin.
   //
   for (Type = (EFI_MEMORY_TYPE)0; Type < EfiMaxMemoryType; Type++) {
-    if (mMemoryTypeStatistics[Type].Special &&
-        (mMemoryTypeStatistics[Type].NumberOfPages > 0))
+    if (mMemoryTypeStatistics.Statistics[Type].Special &&
+        (mMemoryTypeStatistics.Statistics[Type].BinNumberOfPages > 0))
     {
       BufferSize += 2 * Size;
     }
@@ -1805,20 +1796,22 @@ CoreGetMemoryMap (
     //
     // If memory bin is empty or not special, then no split or conversion is required
     //
-    if (mMemoryTypeStatistics[Type].NumberOfPages == 0) {
+    if (mMemoryTypeStatistics.Statistics[Type].BinNumberOfPages == 0) {
+      DEBUG ((DEBUG_ERROR, "CoreGetMemoryMap: Skipping memory bin %u: BinNumberOfPages=0\n", Type));
       continue;
     }
 
-    if (!mMemoryTypeStatistics[Type].Special) {
+    if (!mMemoryTypeStatistics.Statistics[Type].Special) {
+      DEBUG ((DEBUG_ERROR, "CoreGetMemoryMap: Skipping memory bin %u: Special=FALSE\n", Type));
       continue;
     }
 
-    BinStart = mMemoryTypeStatistics[Type].BaseAddress;
-    BinEnd   = mMemoryTypeStatistics[Type].MaximumAddress;
+    BinStart = mMemoryTypeStatistics.Statistics[Type].BaseAddress;
+    BinEnd   = mMemoryTypeStatistics.Statistics[Type].MaximumAddress;
 
     DEBUG ((DEBUG_ERROR, "CoreGetMemoryMap: Processing memory bin %u: Start=%lx, End=%lx\n", Type, BinStart, BinEnd));
-    DEBUG ((DEBUG_ERROR, "  NumberOfPages=%lx\n", mMemoryTypeStatistics[Type].NumberOfPages));
-    DEBUG ((DEBUG_ERROR, "  CurrentNumberOfPages=%lx\n", mMemoryTypeStatistics[Type].CurrentNumberOfPages));
+    DEBUG ((DEBUG_ERROR, "  NumberOfPages=%lx\n", mMemoryTypeStatistics.Statistics[Type].BinNumberOfPages));
+    DEBUG ((DEBUG_ERROR, "  CurrentNumberOfPages=%lx\n", mMemoryTypeStatistics.Statistics[Type].CurrentNumberOfPagesInBin));
 
     for (Modified = TRUE; Modified; ) {
       BufferSize = ((UINT8 *)MemoryMapEnd - (UINT8 *)MemoryMapStart);
@@ -2253,7 +2246,7 @@ CoreTerminateMemoryMap (
     for (Link = gMemoryMap.ForwardLink; Link != &gMemoryMap; Link = Link->ForwardLink) {
       Entry = CR (Link, MEMORY_MAP, Link, MEMORY_MAP_SIGNATURE);
       if (Entry->Type < EfiMaxMemoryType) {
-        if (mMemoryTypeStatistics[Entry->Type].Runtime) {
+        if (mMemoryTypeStatistics.Statistics[Entry->Type].Runtime) {
           ASSERT (Entry->Type != EfiACPIReclaimMemory);
           ASSERT (Entry->Type != EfiACPIMemoryNVS);
           if ((Entry->Start & (RUNTIME_PAGE_ALLOCATION_GRANULARITY - 1)) != 0) {

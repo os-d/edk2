@@ -11,20 +11,6 @@
 
 #include <Guid/MemoryTypeInformation.h>
 
-//
-// Entry for tracking the memory regions for each memory type to coalesce similar memory types
-//
-typedef struct {
-  EFI_PHYSICAL_ADDRESS    BaseAddress;
-  EFI_PHYSICAL_ADDRESS    MaximumAddress;
-  UINT64                  CurrentNumberOfPages;
-  UINT64                  NumberOfPages;
-  UINTN                   InformationIndex;
-  BOOLEAN                 Special;
-  BOOLEAN                 Runtime;
-  BOOLEAN                 DefaultBin;
-} EFI_MEMORY_TYPE_STATISTICS;
-
 /**
   Calculate total memory bin size needed. This function takes into account runtime page allocation granularity.
 
@@ -121,9 +107,9 @@ UpdateMemoryStatistics (
   IN UINTN                 NumberOfPages
   );
 
-extern EFI_MEMORY_TYPE_INFORMATION  gMemoryTypeInformation[EfiMaxMemoryType + 1];
-extern EFI_MEMORY_TYPE_STATISTICS   mMemoryTypeStatistics[EfiMaxMemoryType + 1];
-extern BOOLEAN                      mMemoryTypeInformationInitialized;
-extern EFI_PHYSICAL_ADDRESS         mDefaultMaximumAddress;
-extern EFI_PHYSICAL_ADDRESS         mDefaultBaseAddress;
+extern EFI_MEMORY_TYPE_INFORMATION        gMemoryTypeInformation[EfiMaxMemoryType + 1];
+extern EFI_MEMORY_TYPE_STATISTICS_HEADER  mMemoryTypeStatistics;
+extern BOOLEAN                            mMemoryTypeInformationInitialized;
+extern EFI_PHYSICAL_ADDRESS               mDefaultMaximumAddress;
+extern EFI_PHYSICAL_ADDRESS               mDefaultBaseAddress;
 #endif // BASE_MEMORY_BIN_LIB_

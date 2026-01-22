@@ -84,6 +84,10 @@ RefreshMemTypeInfo (
   EFI_STATUS                   Status;
   UINTN                        NumEntries;
   UINTN                        HobRecordIdx;
+  MEMORY_BINS_RANGE            BinRange;
+  BOOLEAN                      Updated;
+
+  Updated = FALSE;
 
   //
   // Read the MemoryTypeInformation UEFI variable from the
@@ -161,8 +165,8 @@ RefreshMemTypeInfo (
         (HobRecord->NumberOfPages < VariableRecord->NumberOfPages))
     {
       DEBUG ((
-        DEBUG_VERBOSE,
-        "%a: Type 0x%x: NumberOfPages 0x%x -> 0x%x\n",
+        DEBUG_ERROR,
+        "OSDDEBUG506 %a: Type 0x%x: NumberOfPages 0x%x -> 0x%x\n",
         __func__,
         HobRecord->Type,
         HobRecord->NumberOfPages,
@@ -170,74 +174,124 @@ RefreshMemTypeInfo (
         ));
 
       HobRecord->NumberOfPages = VariableRecord->NumberOfPages;
+      Updated                  = TRUE;
+    }
+  }
+
+  // if we didn't update the bins, see if we have the bin location variable to publish a resource descriptor HOB
+  // for. This will give the best chance of S4 resume success.
+  if (!Updated) {
+    DataSize = sizeof (BinRange);
+    Status   = ReadOnlyVariable2->GetVariable (
+                                    ReadOnlyVariable2,
+                                    EFI_MEMORY_TYPE_INFORMATION_BINS_RANGE_VARIABLE_NAME,
+                                    &gEfiMemoryTypeInformationGuid,
+                                    NULL,
+                                    &DataSize,
+                                    &BinRange
+                                    );
+    if (!EFI_ERROR (Status) && (DataSize == sizeof (BinRange))) {
+      DEBUG ((
+        DEBUG_INFO,
+        "OSDDEBUG504 Memory Type Information Bins Range from variable: 0x%llx - 0x%llx\n",
+        BinRange.BaseAddress,
+        BinRange.Length + BinRange.BaseAddress - 1
+        ));
+
+      BuildResourceDescriptorWithOwnerHob (
+        EFI_RESOURCE_SYSTEM_MEMORY,
+        EFI_RESOURCE_ATTRIBUTE_PRESENT     |     \
+        EFI_RESOURCE_ATTRIBUTE_INITIALIZED | \
+        EFI_RESOURCE_ATTRIBUTE_TESTED,
+        BinRange.BaseAddress,
+        BinRange.Length,
+        &gEfiMemoryTypeInformationGuid
+        );
     }
   }
 }
 
-/**
-  Notification function called when EFI_PEI_READ_ONLY_VARIABLE2_PPI becomes
-  available.
+  /**
+    Notification function called when EFI_PEI_READ_ONLY_VARIABLE2_PPI becomes
+    available.
 
-  @param[in] PeiServices      Indirect reference to the PEI Services Table.
-  @param[in] NotifyDescriptor Address of the notification descriptor data
-                              structure.
-  @param[in] Ppi              Address of the PPI that was installed.
+    @param[in] PeiServices      Indirect reference to the PEI Services Table.
+    @param[in] NotifyDescriptor Address of the notification descriptor data
+                                structure.
+    @param[in] Ppi              Address of the PPI that was installed.
 
-  @return  Status of the notification. The status code returned from this
-           function is ignored.
-**/
-STATIC
-EFI_STATUS
-EFIAPI
-OnReadOnlyVariable2Available (
-  IN EFI_PEI_SERVICES           **PeiServices,
-  IN EFI_PEI_NOTIFY_DESCRIPTOR  *NotifyDescriptor,
-  IN VOID                       *Ppi
-  )
-{
-  DEBUG ((DEBUG_VERBOSE, "%a\n", __func__));
+    @return  Status of the notification. The status code returned from this
+             function is ignored.
+  **/
+  STATIC
+  EFI_STATUS
+  EFIAPI
+  OnReadOnlyVariable2Available (
+    IN EFI_PEI_SERVICES           **PeiServices,
+    IN EFI_PEI_NOTIFY_DESCRIPTOR  *NotifyDescriptor,
+    IN VOID                       *Ppi
+    )
+  {
+    DEBUG ((DEBUG_ERROR, "%a\n", __func__));
 
-  RefreshMemTypeInfo (Ppi);
-  BuildMemTypeInfoHob ();
-  return EFI_SUCCESS;
-}
-
-//
-// Notification object for registering the callback, for when
-// EFI_PEI_READ_ONLY_VARIABLE2_PPI becomes available.
-//
-STATIC CONST EFI_PEI_NOTIFY_DESCRIPTOR  mReadOnlyVariable2Notify = {
-  (EFI_PEI_PPI_DESCRIPTOR_NOTIFY_DISPATCH |
-    EFI_PEI_PPI_DESCRIPTOR_TERMINATE_LIST), // Flags
-  &gEfiPeiReadOnlyVariable2PpiGuid,         // Guid
-  OnReadOnlyVariable2Available              // Notify
-};
-
-VOID
-MemTypeInfoInitialization (
-  IN OUT EFI_HOB_PLATFORM_INFO  *PlatformInfoHob
-  )
-{
-  EFI_STATUS  Status;
-
-  if (!PlatformInfoHob->SmmSmramRequire) {
-    //
-    // EFI_PEI_READ_ONLY_VARIABLE2_PPI will never be available; install
-    // the default memory type information HOB right away.
-    //
+    RefreshMemTypeInfo (Ppi);
     BuildMemTypeInfoHob ();
-    return;
+    return EFI_SUCCESS;
   }
 
-  Status = PeiServicesNotifyPpi (&mReadOnlyVariable2Notify);
-  if (EFI_ERROR (Status)) {
-    DEBUG ((
-      DEBUG_ERROR,
-      "%a: failed to set up R/O Variable 2 callback: %r\n",
-      __func__,
-      Status
-      ));
-    ASSERT (FALSE);
-    CpuDeadLoop ();
+  //
+  // Notification object for registering the callback, for when
+  // EFI_PEI_READ_ONLY_VARIABLE2_PPI becomes available.
+  //
+  STATIC CONST EFI_PEI_NOTIFY_DESCRIPTOR  mReadOnlyVariable2Notify = {
+    (EFI_PEI_PPI_DESCRIPTOR_NOTIFY_DISPATCH |
+      EFI_PEI_PPI_DESCRIPTOR_TERMINATE_LIST), // Flags
+    &gEfiPeiReadOnlyVariable2PpiGuid,         // Guid
+    OnReadOnlyVariable2Available              // Notify
+  };
+
+  VOID
+  MemTypeInfoInitialization (
+    IN OUT EFI_HOB_PLATFORM_INFO  *PlatformInfoHob
+    )
+  {
+    EFI_STATUS  Status;
+    EFI_PEI_READ_ONLY_VARIABLE2_PPI  *ReadOnlyVariable2;
+
+    if (!PlatformInfoHob->SmmSmramRequire) {
+      //
+      // EFI_PEI_READ_ONLY_VARIABLE2_PPI will never be available; install
+      // the default memory type information HOB right away.
+      //
+      BuildMemTypeInfoHob ();
+      return;
+    }
+
+    Status = PeiServicesLocatePpi (
+      &gEfiPeiReadOnlyVariable2PpiGuid,
+      0,
+      NULL,
+      (VOID **)&ReadOnlyVariable2
+      );
+
+    if (!EFI_ERROR (Status)) {
+      //
+      // EFI_PEI_READ_ONLY_VARIABLE2_PPI is already available; use it now.
+      //
+      RefreshMemTypeInfo (ReadOnlyVariable2);
+      BuildMemTypeInfoHob ();
+      return;
+    }
+
+    Status = PeiServicesNotifyPpi (&mReadOnlyVariable2Notify);
+    if (EFI_ERROR (Status)) {
+      DEBUG ((
+        DEBUG_ERROR,
+        "%a: failed to set up R/O Variable 2 callback: %r\n",
+        __func__,
+        Status
+        ));
+      ASSERT (FALSE);
+      CpuDeadLoop ();
+    }
   }
-}

@@ -35,6 +35,15 @@ HandOffToDxeCore (
   EFI_PEI_VECTOR_HANDOFF_INFO_PPI  *VectorHandoffInfoPpi;
   VOID                             *GhcbBase;
   UINTN                            GhcbSize;
+  VOID                             *Memory;
+
+  PeiServicesAllocatePages(
+    EfiACPIReclaimMemory,
+    0x20,
+    (EFI_PHYSICAL_ADDRESS *)&Memory
+    );
+
+  DEBUG ((DEBUG_INFO, "DxeIpl: Allocated 0x200000 bytes for page tables at %llx\n", Memory));
 
   //
   // Get Vector Hand-off Info PPI and build Guided HOB

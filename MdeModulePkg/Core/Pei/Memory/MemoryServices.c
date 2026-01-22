@@ -71,13 +71,13 @@ Fixup_PHIT:
 
   // Find max/min addresses of the bins
   for (Index = 0; (EFI_MEMORY_TYPE)Index < EfiMaxMemoryType; Index++) {
-    if ((mMemoryTypeStatistics[Index].NumberOfPages != 0) && !mMemoryTypeStatistics[Index].DefaultBin) {
-      if ((mMemoryTypeStatistics[Index].BaseAddress < BaseBinAddress) || (BaseBinAddress == 0)) {
-        BaseBinAddress = mMemoryTypeStatistics[Index].BaseAddress;
+    if ((mMemoryTypeStatistics.Statistics[Index].BinNumberOfPages != 0) && !mMemoryTypeStatistics.Statistics[Index].DefaultBin) {
+      if ((mMemoryTypeStatistics.Statistics[Index].BaseAddress < BaseBinAddress) || (BaseBinAddress == 0)) {
+        BaseBinAddress = mMemoryTypeStatistics.Statistics[Index].BaseAddress;
       }
 
-      if (mMemoryTypeStatistics[Index].MaximumAddress > EndBinAddress) {
-        EndBinAddress = mMemoryTypeStatistics[Index].MaximumAddress;
+      if (mMemoryTypeStatistics.Statistics[Index].MaximumAddress > EndBinAddress) {
+        EndBinAddress = mMemoryTypeStatistics.Statistics[Index].MaximumAddress;
       }
     }
   }
@@ -136,8 +136,7 @@ InitializeMemoryServices (
     // We have permanent memory now, so we should set up the memory bins if we can.
     // The memory bin initialization depends on writing to a global variable. This is only safe to do if PEI Core has
     // been shadowed to permanent memory so that we don't attempt to write to flash.
-    if (OldCoreData->ShadowedPeiCore != NULL)
-    {
+    if (OldCoreData->ShadowedPeiCore != NULL) {
       // find the PPI that opts in to PEI bins and then the HOB that contains the memory type information.
       Status = PeiLocatePpi ((CONST EFI_PEI_SERVICES **)&PrivateData->Ps, &gInstallPeiMemoryBinsPpiGuid, 0, NULL, NULL);
 
@@ -398,13 +397,15 @@ ConvertMemoryAllocationHobs (
 **/
 VOID
 InternalBuildMemoryAllocationHob (
-  IN EFI_PHYSICAL_ADDRESS  BaseAddress,
-  IN UINT64                Length,
-  IN EFI_MEMORY_TYPE       MemoryType
+  IN CONST EFI_PEI_SERVICES  **PeiServices,
+  IN EFI_PHYSICAL_ADDRESS    BaseAddress,
+  IN UINT64                  Length,
+  IN EFI_MEMORY_TYPE         MemoryType
   )
 {
   EFI_PEI_HOB_POINTERS       Hob;
   EFI_HOB_MEMORY_ALLOCATION  *MemoryAllocationHob;
+  EFI_STATUS                 Status;
 
   //
   // Search unused(freed) memory allocation HOB.
@@ -421,30 +422,36 @@ InternalBuildMemoryAllocationHob (
     Hob.Raw = GetNextHob (EFI_HOB_TYPE_UNUSED, Hob.Raw);
   }
 
-  if (MemoryAllocationHob != NULL) {
-    //
-    // Reuse the unused(freed) memory allocation HOB.
-    //
-    MemoryAllocationHob->Header.HobType = EFI_HOB_TYPE_MEMORY_ALLOCATION;
-    ZeroMem (&(MemoryAllocationHob->AllocDescriptor.Name), sizeof (EFI_GUID));
-    MemoryAllocationHob->AllocDescriptor.MemoryBaseAddress = BaseAddress;
-    MemoryAllocationHob->AllocDescriptor.MemoryLength      = Length;
-    MemoryAllocationHob->AllocDescriptor.MemoryType        = MemoryType;
-    //
-    // Zero the reserved space to match HOB spec
-    //
-    ZeroMem (MemoryAllocationHob->AllocDescriptor.Reserved, sizeof (MemoryAllocationHob->AllocDescriptor.Reserved));
-  } else {
-    //
-    // No unused(freed) memory allocation HOB found.
-    // Build memory allocation HOB normally.
-    //
-    BuildMemoryAllocationHob (
-      BaseAddress,
-      Length,
-      MemoryType
-      );
+  //
+  // If we didn't find a HOB to reuse, then create a new one.
+  //
+  if (MemoryAllocationHob == NULL) {
+    Status = PeiCreateHob (PeiServices, EFI_HOB_TYPE_MEMORY_ALLOCATION, (UINT16)sizeof (EFI_HOB_MEMORY_ALLOCATION), (VOID **)&MemoryAllocationHob);
+    if (EFI_ERROR (Status) || (MemoryAllocationHob == NULL)) {
+      ASSERT (FALSE);
+      return;
+    }
   }
+
+  MemoryAllocationHob->Header.HobType = EFI_HOB_TYPE_MEMORY_ALLOCATION;
+
+  //
+  // If we are using PEI memory bins, track this allocation with the PEI core GUID for DXE to consume.
+  // Otherwise, just produce a HOB with a zeroed GUID.
+  //
+  if (mMemoryTypeInformationInitialized) {
+    CopyGuid (&(MemoryAllocationHob->AllocDescriptor.Name), &gEfiCallerIdGuid);
+  } else {
+    ZeroMem (&(MemoryAllocationHob->AllocDescriptor.Name), sizeof (EFI_GUID));
+  }
+
+  MemoryAllocationHob->AllocDescriptor.MemoryBaseAddress = BaseAddress;
+  MemoryAllocationHob->AllocDescriptor.MemoryLength      = Length;
+  MemoryAllocationHob->AllocDescriptor.MemoryType        = MemoryType;
+  //
+  // Zero the reserved space to match HOB spec
+  //
+  ZeroMem (MemoryAllocationHob->AllocDescriptor.Reserved, sizeof (MemoryAllocationHob->AllocDescriptor.Reserved));
 }
 
 /**
@@ -462,6 +469,7 @@ InternalBuildMemoryAllocationHob (
 **/
 VOID
 UpdateOrSplitMemoryAllocationHob (
+  IN CONST EFI_PEI_SERVICES         **PeiServices,
   IN OUT EFI_HOB_MEMORY_ALLOCATION  *MemoryAllocationHob,
   IN EFI_PHYSICAL_ADDRESS           Memory,
   IN UINT64                         Bytes,
@@ -475,6 +483,7 @@ UpdateOrSplitMemoryAllocationHob (
     // Last pages need to be split out.
     //
     InternalBuildMemoryAllocationHob (
+      PeiServices,
       Memory + Bytes,
       (MemoryAllocationHob->AllocDescriptor.MemoryBaseAddress + MemoryAllocationHob->AllocDescriptor.MemoryLength) - (Memory + Bytes),
       MemoryAllocationHob->AllocDescriptor.MemoryType
@@ -486,6 +495,7 @@ UpdateOrSplitMemoryAllocationHob (
     // First pages need to be split out.
     //
     InternalBuildMemoryAllocationHob (
+      PeiServices,
       MemoryAllocationHob->AllocDescriptor.MemoryBaseAddress,
       Memory - MemoryAllocationHob->AllocDescriptor.MemoryBaseAddress,
       MemoryAllocationHob->AllocDescriptor.MemoryType
@@ -587,6 +597,7 @@ MergeFreeMemoryInMemoryAllocationHob (
 **/
 EFI_STATUS
 FindFreeMemoryFromMemoryAllocationHob (
+  IN  EFI_PEI_SERVICES      **PeiServices,
   IN  EFI_MEMORY_TYPE       MemoryType,
   IN  UINTN                 Pages,
   IN  UINTN                 Granularity,
@@ -633,7 +644,7 @@ FindFreeMemoryFromMemoryAllocationHob (
   }
 
   if (MemoryAllocationHob != NULL) {
-    UpdateOrSplitMemoryAllocationHob (MemoryAllocationHob, BaseAddress, Bytes, MemoryType);
+    UpdateOrSplitMemoryAllocationHob (PeiServices, MemoryAllocationHob, BaseAddress, Bytes, MemoryType);
     *Memory = BaseAddress;
     return EFI_SUCCESS;
   } else {
@@ -641,7 +652,7 @@ FindFreeMemoryFromMemoryAllocationHob (
       //
       // Retry if there are free memory ranges merged.
       //
-      return FindFreeMemoryFromMemoryAllocationHob (MemoryType, Pages, Granularity, Memory);
+      return FindFreeMemoryFromMemoryAllocationHob (PeiServices, MemoryType, Pages, Granularity, Memory);
     }
 
     return EFI_NOT_FOUND;
@@ -739,9 +750,9 @@ PeiAllocatePages (
     FreeMemoryBottom = &(PrivateData->PhysicalMemoryBegin);
   } else {
     // if we are in permanent memory and have memory bins, we need to respect them
-    if (mMemoryTypeInformationInitialized && !mMemoryTypeStatistics[MemoryType].DefaultBin) {
-      FreeMemoryTop    = &(mMemoryTypeStatistics[MemoryType].MaximumAddress);
-      FreeMemoryBottom = &(mMemoryTypeStatistics[MemoryType].BaseAddress);
+    if (mMemoryTypeInformationInitialized && !mMemoryTypeStatistics.Statistics[MemoryType].DefaultBin) {
+      FreeMemoryTop    = &(mMemoryTypeStatistics.Statistics[MemoryType].MaximumAddress);
+      FreeMemoryBottom = &(mMemoryTypeStatistics.Statistics[MemoryType].BaseAddress);
       DEBUG ((
         DEBUG_ERROR,
         "OSDDEBUG20 AllocatePages: Using memory bin for type %d: Base 0x%lx, Max 0x%lx FreeMemoryTop: 0x%llx FreeMemoryBottom: 0x%llx\n",
@@ -766,7 +777,7 @@ PeiAllocatePages (
     //
     Padding = *(FreeMemoryTop) & (Granularity - 1);
     if (((UINTN)(*FreeMemoryTop - *FreeMemoryBottom) < Padding) || (*(FreeMemoryTop) - Padding == 0)) {
-      if ((Index == 0) && mMemoryTypeInformationInitialized && !mMemoryTypeStatistics[MemoryType].DefaultBin) {
+      if ((Index == 0) && mMemoryTypeInformationInitialized && !mMemoryTypeStatistics.Statistics[MemoryType].DefaultBin) {
         //
         // Try to the default bin before searching memory allocation HOBs
         //
@@ -791,6 +802,7 @@ PeiAllocatePages (
       // the pages that we will lose to rounding
       //
       InternalBuildMemoryAllocationHob (
+        PeiServices,
         *(FreeMemoryTop),
         Padding & ~(UINTN)EFI_PAGE_MASK,
         EfiConventionalMemory
@@ -826,6 +838,7 @@ PeiAllocatePages (
       // Create a memory allocation HOB.
       //
       InternalBuildMemoryAllocationHob (
+        PeiServices,
         *(FreeMemoryTop),
         Pages * EFI_PAGE_SIZE,
         MemoryType
@@ -834,7 +847,7 @@ PeiAllocatePages (
       return EFI_SUCCESS;
     }
 
-    if ((Index == 0) && mMemoryTypeInformationInitialized && !mMemoryTypeStatistics[MemoryType].DefaultBin) {
+    if ((Index == 0) && mMemoryTypeInformationInitialized && !mMemoryTypeStatistics.Statistics[MemoryType].DefaultBin) {
       //
       // Try to the default bin before searching memory allocation HOBs
       //
@@ -848,6 +861,8 @@ PeiAllocatePages (
         MemoryType
         ));
       continue;
+    } else {
+      goto NotEnoughFreeMemory;
     }
   }
 
@@ -855,7 +870,7 @@ NotEnoughFreeMemory:
   //
   // Try to find free memory by searching memory allocation HOBs.
   //
-  Status = FindFreeMemoryFromMemoryAllocationHob (MemoryType, Pages, Granularity, Memory);
+  Status = FindFreeMemoryFromMemoryAllocationHob (PeiServices, MemoryType, Pages, Granularity, Memory);
   if (!EFI_ERROR (Status)) {
     return Status;
   }
@@ -997,7 +1012,7 @@ PeiFreePages (
   }
 
   if (MemoryAllocationHob != NULL) {
-    UpdateOrSplitMemoryAllocationHob (MemoryAllocationHob, Memory, Bytes, EfiConventionalMemory);
+    UpdateOrSplitMemoryAllocationHob (PeiServices, MemoryAllocationHob, Memory, Bytes, EfiConventionalMemory);
     FreeMemoryAllocationHob (PrivateData, MemoryAllocationHob);
     return EFI_SUCCESS;
   } else {
