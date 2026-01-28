@@ -65,24 +65,28 @@ EFI_MEMORY_TYPE_INFORMATION  gMemoryTypeInformation[EfiMaxMemoryType + 1] = {
 
 BOOLEAN  mMemoryTypeInformationInitialized = FALSE;
 
-EFI_MEMORY_TYPE_STATISTICS  mMemoryTypeStatistics[EfiMaxMemoryType + 1] = {
-  { 0, MAX_ALLOC_ADDRESS, 0, 0, EfiMaxMemoryType, TRUE,  FALSE },  // EfiReservedMemoryType
-  { 0, MAX_ALLOC_ADDRESS, 0, 0, EfiMaxMemoryType, FALSE, FALSE },  // EfiLoaderCode
-  { 0, MAX_ALLOC_ADDRESS, 0, 0, EfiMaxMemoryType, FALSE, FALSE },  // EfiLoaderData
-  { 0, MAX_ALLOC_ADDRESS, 0, 0, EfiMaxMemoryType, FALSE, FALSE },  // EfiBootServicesCode
-  { 0, MAX_ALLOC_ADDRESS, 0, 0, EfiMaxMemoryType, FALSE, FALSE },  // EfiBootServicesData
-  { 0, MAX_ALLOC_ADDRESS, 0, 0, EfiMaxMemoryType, TRUE,  TRUE  },  // EfiRuntimeServicesCode
-  { 0, MAX_ALLOC_ADDRESS, 0, 0, EfiMaxMemoryType, TRUE,  TRUE  },  // EfiRuntimeServicesData
-  { 0, MAX_ALLOC_ADDRESS, 0, 0, EfiMaxMemoryType, FALSE, FALSE },  // EfiConventionalMemory
-  { 0, MAX_ALLOC_ADDRESS, 0, 0, EfiMaxMemoryType, FALSE, FALSE },  // EfiUnusableMemory
-  { 0, MAX_ALLOC_ADDRESS, 0, 0, EfiMaxMemoryType, TRUE,  FALSE },  // EfiACPIReclaimMemory
-  { 0, MAX_ALLOC_ADDRESS, 0, 0, EfiMaxMemoryType, TRUE,  FALSE },  // EfiACPIMemoryNVS
-  { 0, MAX_ALLOC_ADDRESS, 0, 0, EfiMaxMemoryType, FALSE, FALSE },  // EfiMemoryMappedIO
-  { 0, MAX_ALLOC_ADDRESS, 0, 0, EfiMaxMemoryType, FALSE, FALSE },  // EfiMemoryMappedIOPortSpace
-  { 0, MAX_ALLOC_ADDRESS, 0, 0, EfiMaxMemoryType, TRUE,  TRUE  },  // EfiPalCode
-  { 0, MAX_ALLOC_ADDRESS, 0, 0, EfiMaxMemoryType, FALSE, FALSE },  // EfiPersistentMemory
-  { 0, MAX_ALLOC_ADDRESS, 0, 0, EfiMaxMemoryType, TRUE,  FALSE },  // EfiUnacceptedMemoryType
-  { 0, MAX_ALLOC_ADDRESS, 0, 0, EfiMaxMemoryType, FALSE, FALSE }   // EfiMaxMemoryType
+EFI_MEMORY_TYPE_STATISTICS_HEADER  mMemoryTypeStatistics = {
+  CURRENT_MEMORY_TYPE_STATISTICS_VERSION,  // Version
+  EfiMaxMemoryType + 1,                    // NumEntries
+  {
+    { 0, MAX_ALLOC_ADDRESS, 0, 0, 0, EfiMaxMemoryType, TRUE,  FALSE, FALSE, EfiReservedMemoryType      },
+    { 0, MAX_ALLOC_ADDRESS, 0, 0, 0, EfiMaxMemoryType, FALSE, FALSE, FALSE, EfiLoaderCode              },
+    { 0, MAX_ALLOC_ADDRESS, 0, 0, 0, EfiMaxMemoryType, FALSE, FALSE, FALSE, EfiLoaderData              },
+    { 0, MAX_ALLOC_ADDRESS, 0, 0, 0, EfiMaxMemoryType, FALSE, FALSE, FALSE, EfiBootServicesCode        },
+    { 0, MAX_ALLOC_ADDRESS, 0, 0, 0, EfiMaxMemoryType, FALSE, FALSE, FALSE, EfiBootServicesData        },
+    { 0, MAX_ALLOC_ADDRESS, 0, 0, 0, EfiMaxMemoryType, TRUE,  TRUE,  FALSE, EfiRuntimeServicesCode     },
+    { 0, MAX_ALLOC_ADDRESS, 0, 0, 0, EfiMaxMemoryType, TRUE,  TRUE,  FALSE, EfiRuntimeServicesData     },
+    { 0, MAX_ALLOC_ADDRESS, 0, 0, 0, EfiMaxMemoryType, FALSE, FALSE, FALSE, EfiConventionalMemory      },
+    { 0, MAX_ALLOC_ADDRESS, 0, 0, 0, EfiMaxMemoryType, FALSE, FALSE, FALSE, EfiUnusableMemory          },
+    { 0, MAX_ALLOC_ADDRESS, 0, 0, 0, EfiMaxMemoryType, TRUE,  FALSE, FALSE, EfiACPIReclaimMemory       },
+    { 0, MAX_ALLOC_ADDRESS, 0, 0, 0, EfiMaxMemoryType, TRUE,  FALSE, FALSE, EfiACPIMemoryNVS           },
+    { 0, MAX_ALLOC_ADDRESS, 0, 0, 0, EfiMaxMemoryType, FALSE, FALSE, FALSE, EfiMemoryMappedIO          },
+    { 0, MAX_ALLOC_ADDRESS, 0, 0, 0, EfiMaxMemoryType, FALSE, FALSE, FALSE, EfiMemoryMappedIOPortSpace },
+    { 0, MAX_ALLOC_ADDRESS, 0, 0, 0, EfiMaxMemoryType, TRUE,  TRUE,  FALSE, EfiPalCode                 },
+    { 0, MAX_ALLOC_ADDRESS, 0, 0, 0, EfiMaxMemoryType, FALSE, FALSE, FALSE, EfiPersistentMemory        },
+    { 0, MAX_ALLOC_ADDRESS, 0, 0, 0, EfiMaxMemoryType, TRUE,  FALSE, FALSE, EfiUnacceptedMemoryType    },
+    { 0, MAX_ALLOC_ADDRESS, 0, 0, 0, EfiMaxMemoryType, FALSE, FALSE, FALSE, EfiMaxMemoryType           }
+  }
 };
 
 /**
@@ -317,22 +321,22 @@ CoreSetMemoryTypeInformationRange (
     }
 
     if (gMemoryTypeInformation[Index].NumberOfPages != 0) {
-      mMemoryTypeStatistics[Type].MaximumAddress = Top - 1;
+      mMemoryTypeStatistics.Statistics[Type].MaximumAddress = Top - 1;
       Top                                                  -= LShiftU64 (gMemoryTypeInformation[Index].NumberOfPages, EFI_PAGE_SHIFT);
-      mMemoryTypeStatistics[Type].BaseAddress    = Top;
+      mMemoryTypeStatistics.Statistics[Type].BaseAddress    = Top;
 
-      DEBUG ((DEBUG_ERROR, "OSDDEBUG45 %a: Memory Type %d assigned bin 0x%llx - 0x%llx\n", __func__, Type, mMemoryTypeStatistics[Type].BaseAddress, mMemoryTypeStatistics[Type].MaximumAddress));
+      DEBUG ((DEBUG_ERROR, "OSDDEBUG45 %a: Memory Type %d assigned bin 0x%llx - 0x%llx\n", __func__, Type, mMemoryTypeStatistics.Statistics[Type].BaseAddress, mMemoryTypeStatistics.Statistics[Type].MaximumAddress));
 
       //
       // If the current base address is the lowest address so far, then update
       // the default maximum address
       //
-      if (mMemoryTypeStatistics[Type].BaseAddress < mDefaultMaximumAddress) {
-        mDefaultMaximumAddress = mMemoryTypeStatistics[Type].BaseAddress - 1;
+      if (mMemoryTypeStatistics.Statistics[Type].BaseAddress < mDefaultMaximumAddress) {
+        mDefaultMaximumAddress = mMemoryTypeStatistics.Statistics[Type].BaseAddress - 1;
       }
 
-      mMemoryTypeStatistics[Type].NumberOfPages   = EFI_SIZE_TO_PAGES ((UINTN)BinSize);
-      gMemoryTypeInformation[Index].NumberOfPages = 0;
+      mMemoryTypeStatistics.Statistics[Type].BinNumberOfPages = gMemoryTypeInformation[Index].NumberOfPages;
+      gMemoryTypeInformation[Index].NumberOfPages             = 0;
     }
   }
 
@@ -343,13 +347,15 @@ CoreSetMemoryTypeInformationRange (
   for (Type = (EFI_MEMORY_TYPE)0; Type < EfiMaxMemoryType; Type++) {
     for (Index = 0; gMemoryTypeInformation[Index].Type != EfiMaxMemoryType; Index++) {
       if (Type == (EFI_MEMORY_TYPE)gMemoryTypeInformation[Index].Type) {
-        mMemoryTypeStatistics[Type].InformationIndex = Index;
+        mMemoryTypeStatistics.Statistics[Type].InformationIndex = Index;
       }
     }
 
-    mMemoryTypeStatistics[Type].CurrentNumberOfPages = 0;
-    if (mMemoryTypeStatistics[Type].MaximumAddress == MAX_ALLOC_ADDRESS) {
-      mMemoryTypeStatistics[Type].MaximumAddress = mDefaultMaximumAddress;
+    mMemoryTypeStatistics.Statistics[Type].CurrentNumberOfPagesInBin    = 0;
+    mMemoryTypeStatistics.Statistics[Type].CurrentNumberOfPagesOutOfBin = 0;
+    if (mMemoryTypeStatistics.Statistics[Type].MaximumAddress == MAX_ALLOC_ADDRESS) {
+      mMemoryTypeStatistics.Statistics[Type].MaximumAddress = mDefaultMaximumAddress;
+      mMemoryTypeStatistics.Statistics[Type].DefaultBin     = TRUE;
     }
   }
 
@@ -420,10 +426,10 @@ AllocateMemoryTypeInformationBins (
     }
 
     if (gMemoryTypeInformation[Index].NumberOfPages != 0) {
-      mMemoryTypeStatistics[Type].BaseAddress    = LastBinAddress - LShiftU64 (gMemoryTypeInformation[Index].NumberOfPages, EFI_PAGE_SHIFT);
-      mMemoryTypeStatistics[Type].MaximumAddress = LastBinAddress - 1;
-      LastBinAddress                                        = mMemoryTypeStatistics[Type].BaseAddress;
-      DEBUG ((DEBUG_ERROR, "OSDDEBUG5 %a: Memory Type %d assigned bin 0x%llx - 0x%llx\n", __func__, Type, mMemoryTypeStatistics[Type].BaseAddress, mMemoryTypeStatistics[Type].MaximumAddress));
+      mMemoryTypeStatistics.Statistics[Type].BaseAddress    = LastBinAddress - LShiftU64 (gMemoryTypeInformation[Index].NumberOfPages, EFI_PAGE_SHIFT);
+      mMemoryTypeStatistics.Statistics[Type].MaximumAddress = LastBinAddress - 1;
+      LastBinAddress                                        = mMemoryTypeStatistics.Statistics[Type].BaseAddress;
+      DEBUG ((DEBUG_ERROR, "OSDDEBUG5 %a: Memory Type %d assigned bin 0x%llx - 0x%llx\n", __func__, Type, mMemoryTypeStatistics.Statistics[Type].BaseAddress, mMemoryTypeStatistics.Statistics[Type].MaximumAddress));
     }
   }
 
@@ -446,8 +452,8 @@ AllocateMemoryTypeInformationBins (
     }
 
     if (gMemoryTypeInformation[Index].NumberOfPages != 0) {
-      mMemoryTypeStatistics[Type].NumberOfPages   = gMemoryTypeInformation[Index].NumberOfPages;
-      gMemoryTypeInformation[Index].NumberOfPages = 0;
+      mMemoryTypeStatistics.Statistics[Type].BinNumberOfPages = gMemoryTypeInformation[Index].NumberOfPages;
+      gMemoryTypeInformation[Index].NumberOfPages             = 0;
     }
   }
 
@@ -458,13 +464,15 @@ AllocateMemoryTypeInformationBins (
   for (Type = (EFI_MEMORY_TYPE)0; Type < EfiMaxMemoryType; Type++) {
     for (Index = 0; gMemoryTypeInformation[Index].Type != EfiMaxMemoryType; Index++) {
       if (Type == (EFI_MEMORY_TYPE)gMemoryTypeInformation[Index].Type) {
-        mMemoryTypeStatistics[Type].InformationIndex = Index;
+        mMemoryTypeStatistics.Statistics[Type].InformationIndex = Index;
       }
     }
 
-    mMemoryTypeStatistics[Type].CurrentNumberOfPages = 0;
-    if (mMemoryTypeStatistics[Type].MaximumAddress == MAX_ALLOC_ADDRESS) {
-      mMemoryTypeStatistics[Type].MaximumAddress = mDefaultMaximumAddress;
+    mMemoryTypeStatistics.Statistics[Type].CurrentNumberOfPagesInBin    = 0;
+    mMemoryTypeStatistics.Statistics[Type].CurrentNumberOfPagesOutOfBin = 0;
+    if (mMemoryTypeStatistics.Statistics[Type].MaximumAddress == MAX_ALLOC_ADDRESS) {
+      mMemoryTypeStatistics.Statistics[Type].MaximumAddress = mDefaultMaximumAddress;
+      mMemoryTypeStatistics.Statistics[Type].DefaultBin     = TRUE;
     }
   }
 
@@ -495,28 +503,57 @@ UpdateMemoryStatistics (
   }
 
   //
-  // Update counters for the number of pages allocated to each memory type
+  // Update counters for the number of pages allocated to each memory type. We only count an allocation as in a bin
+  // if the entire allocation is within the bin range.
   //
-  if ((UINT32)OldType < EfiMaxMemoryType) {
-    if (((Start >= mMemoryTypeStatistics[OldType].BaseAddress) && (Start <= mMemoryTypeStatistics[OldType].MaximumAddress)) ||
-        ((Start >= mDefaultBaseAddress) && (Start <= mDefaultMaximumAddress)))
+
+  if (OldType < EfiMaxMemoryType) {
+    if ((Start >=
+         mMemoryTypeStatistics.Statistics[OldType].BaseAddress) &&
+        (Start + NumberOfPages * EFI_PAGE_SIZE <=
+         mMemoryTypeStatistics.Statistics[OldType].MaximumAddress + 1))
     {
-      if (NumberOfPages > mMemoryTypeStatistics[OldType].CurrentNumberOfPages) {
-        mMemoryTypeStatistics[OldType].CurrentNumberOfPages = 0;
+      // The old type was in the memory bin
+      if (NumberOfPages > mMemoryTypeStatistics.Statistics[OldType].CurrentNumberOfPagesInBin) {
+        mMemoryTypeStatistics.Statistics[OldType].CurrentNumberOfPagesInBin = 0;
       } else {
-        mMemoryTypeStatistics[OldType].CurrentNumberOfPages -= NumberOfPages;
+        mMemoryTypeStatistics.Statistics[OldType].CurrentNumberOfPagesInBin -= NumberOfPages;
+      }
+    } else {
+      // The old type was outside the memory bin
+      if (NumberOfPages > mMemoryTypeStatistics.Statistics[OldType].CurrentNumberOfPagesOutOfBin) {
+        mMemoryTypeStatistics.Statistics[OldType].CurrentNumberOfPagesOutOfBin = 0;
+      } else {
+        mMemoryTypeStatistics.Statistics[OldType].CurrentNumberOfPagesOutOfBin -= NumberOfPages;
       }
     }
   }
 
-  if ((UINT32)NewType < EfiMaxMemoryType) {
-    if (((Start >= mMemoryTypeStatistics[NewType].BaseAddress) && (Start <= mMemoryTypeStatistics[NewType].MaximumAddress)) ||
-        ((Start >= mDefaultBaseAddress) && (Start <= mDefaultMaximumAddress)))
+  // DEBUG ((DEBUG_ERROR, "OSDDEBUG201 Update memory statistics for allocated memory: OldType=%d, NewType=%d, Start=%llx, Pages=%llx, mDefaultBaseAddress=%llx, mDefaultMaximumAddress=%llx\n", OldType, NewType, Start, NumberOfPages, mDefaultBaseAddress, mDefaultMaximumAddress));
+  if (NewType < EfiMaxMemoryType) {
+    if ((Start >=
+         mMemoryTypeStatistics.Statistics[NewType].BaseAddress) &&
+        (Start + NumberOfPages * EFI_PAGE_SIZE <=
+         mMemoryTypeStatistics.Statistics[NewType].MaximumAddress + 1))
     {
-      mMemoryTypeStatistics[NewType].CurrentNumberOfPages += NumberOfPages;
-      if (mMemoryTypeStatistics[NewType].CurrentNumberOfPages > gMemoryTypeInformation[mMemoryTypeStatistics[NewType].InformationIndex].NumberOfPages) {
-        gMemoryTypeInformation[mMemoryTypeStatistics[NewType].InformationIndex].NumberOfPages = (UINT32)mMemoryTypeStatistics[NewType].CurrentNumberOfPages;
-      }
+      // The new type is in the memory bin
+      mMemoryTypeStatistics.Statistics[NewType].CurrentNumberOfPagesInBin += NumberOfPages;
+    } else {
+      // The new type is outside the memory bin
+      DEBUG ((
+        DEBUG_ERROR,
+        "OSDDEBUG202 Allocation outside bin: Type=%d, Start=%llx, Pages=%llx, BinRange=0x%llx-0x%llx\n",
+        NewType,
+        Start,
+        NumberOfPages,
+        mMemoryTypeStatistics.Statistics[NewType].BaseAddress,
+        mMemoryTypeStatistics.Statistics[NewType].MaximumAddress
+        ));
+      mMemoryTypeStatistics.Statistics[NewType].CurrentNumberOfPagesOutOfBin += NumberOfPages;
+    }
+
+    if (mMemoryTypeStatistics.Statistics[NewType].CurrentNumberOfPagesInBin + mMemoryTypeStatistics.Statistics[NewType].CurrentNumberOfPagesOutOfBin > gMemoryTypeInformation[mMemoryTypeStatistics.Statistics[NewType].InformationIndex].NumberOfPages) {
+      gMemoryTypeInformation[mMemoryTypeStatistics.Statistics[NewType].InformationIndex].NumberOfPages = (UINT32)(mMemoryTypeStatistics.Statistics[NewType].CurrentNumberOfPagesInBin + (UINT32)mMemoryTypeStatistics.Statistics[NewType].CurrentNumberOfPagesOutOfBin);
     }
   }
 }
