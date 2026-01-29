@@ -72,6 +72,7 @@ RefreshMemTypeInfo (
   EFI_STATUS                   Status;
   UINTN                        NumEntries;
   UINTN                        HobRecordIdx;
+  MEMORY_BINS_RANGE            BinRange;
 
   //
   // Read the MemoryTypeInformation UEFI variable from the
@@ -160,6 +161,29 @@ RefreshMemTypeInfo (
       HobRecord->NumberOfPages = VariableRecord->NumberOfPages;
     }
   }
+
+  // see if we have the bin location variable to publish a resource descriptor HOB
+  // for. This will give the best chance of S4 resume success.
+  DataSize = sizeof (BinRange);
+  Status   = ReadOnlyVariable2->GetVariable (
+                                  ReadOnlyVariable2,
+                                  EFI_MEMORY_TYPE_INFORMATION_BINS_RANGE_VARIABLE_NAME,
+                                  &gEfiMemoryTypeInformationGuid,
+                                  NULL,
+                                  &DataSize,
+                                  &BinRange
+                                  );
+  if (!EFI_ERROR (Status) && (DataSize == sizeof (BinRange))) {
+    BuildResourceDescriptorWithOwnerHob (
+      EFI_RESOURCE_SYSTEM_MEMORY,
+      EFI_RESOURCE_ATTRIBUTE_PRESENT     |     \
+      EFI_RESOURCE_ATTRIBUTE_INITIALIZED | \
+      EFI_RESOURCE_ATTRIBUTE_TESTED,
+      BinRange.BaseAddress,
+      BinRange.Length,
+      &gEfiMemoryTypeInformationGuid
+      );
+  }
 }
 
 /**
@@ -206,13 +230,30 @@ MemTypeInfoInitialization (
   IN OUT EFI_HOB_PLATFORM_INFO  *PlatformInfoHob
   )
 {
-  EFI_STATUS  Status;
+  EFI_STATUS                       Status;
+  EFI_PEI_READ_ONLY_VARIABLE2_PPI  *ReadOnlyVariable2;
 
   if (!PlatformInfoHob->SmmSmramRequire) {
     //
     // EFI_PEI_READ_ONLY_VARIABLE2_PPI will never be available; install
     // the default memory type information HOB right away.
     //
+    BuildMemTypeInfoHob ();
+    return;
+  }
+
+  Status = PeiServicesLocatePpi (
+             &gEfiPeiReadOnlyVariable2PpiGuid,
+             0,
+             NULL,
+             (VOID **)&ReadOnlyVariable2
+             );
+
+  if (!EFI_ERROR (Status)) {
+    //
+    // EFI_PEI_READ_ONLY_VARIABLE2_PPI is already available; use it now.
+    //
+    RefreshMemTypeInfo (ReadOnlyVariable2);
     BuildMemTypeInfoHob ();
     return;
   }
