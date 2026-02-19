@@ -12,6 +12,12 @@
 
 #include <Base.h>
 
+// The default value of PcdStackCookieExceptionVector is set to a value in the user defined interrupt vector range
+// for IA32/X64 and AArch64, but it can be overridden by a platform if needed. We define the default here for
+// the common exception handler routine to use to handle the stack cookie failure interrupt if a platform didn't
+// override it.
+#define STACK_CHECK_EXCEPTION_VECTOR  0x42
+
 #if defined (__GNUC__) || defined (__clang__)
 
 // The __stack_chk_guard is a random value placed on the stack between the stack variables

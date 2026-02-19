@@ -105,6 +105,19 @@ EFI_GET_PCD_INFO_PROTOCOL  mEfiGetPcdInfoInstance = {
 EFI_HANDLE  mPcdHandle      = NULL;
 UINTN       mVpdBaseAddress = 0;
 
+__attribute__ ((noinline))
+VOID
+LetsCorrupt (
+  VOID
+  )
+{
+  volatile CHAR8  Buf[8];
+
+  CopyMem ((VOID *)Buf, "ABCDEFGHIPGLDLALAL", 12);
+
+  // DEBUG ((DEBUG_ERROR, "Buffer content is %a\n", (CHAR8 *)Buf));
+}
+
 /**
   Main entry for PCD DXE driver.
 
@@ -125,6 +138,8 @@ PcdDxeInit (
 {
   EFI_STATUS  Status;
   VOID        *Registration;
+
+  LetsCorrupt ();
 
   //
   // Make sure the Pcd Protocol is not already installed in the system

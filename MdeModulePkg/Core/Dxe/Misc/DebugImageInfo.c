@@ -17,6 +17,7 @@ EFI_DEBUG_IMAGE_INFO_TABLE_HEADER  mDebugInfoTableHeader = {
 
 UINTN  mMaxTableEntries = 0;
 
+__attribute__ ((used))
 EFI_SYSTEM_TABLE_POINTER  *mDebugTable = NULL;
 
 #define EFI_DEBUG_TABLE_ENTRY_SIZE  (sizeof (VOID *))
@@ -145,7 +146,7 @@ CoreUpdateDebugTableCrc32 (
 {
   ASSERT (mDebugTable != NULL);
   mDebugTable->Crc32 = 0;
-  gBS->CalculateCrc32 ((VOID *)mDebugTable, sizeof (EFI_SYSTEM_TABLE_POINTER), &mDebugTable->Crc32);
+  gBS->CalculateCrc32 ((VOID *)mDebugTable, sizeof (EFI_SYSTEM_TABLE_POINTER), (UINT32 *)&mDebugTable->Crc32);
 }
 
 /**
