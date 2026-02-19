@@ -10,11 +10,13 @@
 
 ;------------------------------------------------------------------------------
 ; Checks the stack cookie value against __security_cookie and calls the
-; stack cookie failure handler if there is a mismatch.
+; stack cookie failure handler if there is a mismatch, passing along the
+; exception address on the stack for IA32 and rcx for X64.
 ;
 ; VOID
+; EFIAPI
 ; TriggerStackCookieInterrupt (
-;   VOID
+;   EFI_PHYSICAL_ADDRESS ExceptionAddress
 ;   );
 ;------------------------------------------------------------------------------
 global ASM_PFX(TriggerStackCookieInterrupt)

@@ -9,10 +9,12 @@
 
 //------------------------------------------------------------------------------
 // Calls an interrupt using the vector specified by PcdStackCookieExceptionVector
+// and passes the ExceptionAddress through in x0.
 //
 // VOID
+// EFIAPI
 // TriggerStackCookieInterrupt (
-//   VOID
+//   EFI_PHYSICAL_ADDRESS ExceptionAddress
 //   );
 //------------------------------------------------------------------------------
 .global ASM_PFX(TriggerStackCookieInterrupt)
