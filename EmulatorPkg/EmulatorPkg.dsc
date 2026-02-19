@@ -27,6 +27,7 @@
   BUILD_TARGETS                  = DEBUG|RELEASE|NOOPT
   SKUID_IDENTIFIER               = DEFAULT
   FLASH_DEFINITION               = EmulatorPkg/EmulatorPkg.fdf
+  DEFINE CUSTOM_STACK_CHECK_LIB         = STATIC
 
 
   #
@@ -179,6 +180,9 @@
   DebugLib|MdePkg/Library/BaseDebugLibSerialPort/BaseDebugLibSerialPort.inf
   TimerLib|EmulatorPkg/Library/PeiTimerLib/PeiTimerLib.inf
 
+[LibraryClasses.common.HOST_APPLICATION]
+  StackCheckLib|MdePkg/Library/StackCheckLibNull/StackCheckLibNullHostApplication.inf
+
 [LibraryClasses.common.HOST_APPLICATION, LibraryClasses.common.BASE]
   DebugLib|MdePkg/Library/BaseDebugLibNull/BaseDebugLibNull.inf
   PeCoffExtraActionLib|MdePkg/Library/BasePeCoffExtraActionLibNull/BasePeCoffExtraActionLibNull.inf
@@ -190,7 +194,6 @@
   PeCoffGetEntryPointLib|MdePkg/Library/BasePeCoffGetEntryPointLib/BasePeCoffGetEntryPointLib.inf
   PpiListLib|EmulatorPkg/Library/SecPpiListLib/SecPpiListLib.inf
   PeiServicesLib|EmulatorPkg/Library/SecPeiServicesLib/SecPeiServicesLib.inf
-  StackCheckLib|MdePkg/Library/StackCheckLibNull/StackCheckLibNullHostApplication.inf
 
 [LibraryClasses.common.PEIM, LibraryClasses.common.PEI_CORE]
   HobLib|MdePkg/Library/PeiHobLib/PeiHobLib.inf
@@ -635,7 +638,7 @@
   # Windows/CLANGPDB using Visual Studio includes and libraries
   #
   CLANGPDB:RELEASE_*_*_CC_FLAGS = -g0
-  CLANGPDB:DEBUG_*_*_CC_FLAGS   = -g3 -fno-lto -O0
+  CLANGPDB:DEBUG_*_*_CC_FLAGS   = -g3 -O0
   CLANGPDB:NOOPT_*_*_CC_FLAGS   = -g3 -fno-lto
 
   CLANGPDB:*_*_*_DLINK_FLAGS     = /ALIGN:4096 /FILEALIGN:4096

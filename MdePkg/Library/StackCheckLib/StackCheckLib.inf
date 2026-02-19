@@ -15,26 +15,27 @@
 
 [Sources]
   StackCheckLibCommonMsvc.c | MSFT
-  StackCheckLibCommonGcc.c  | GCC
+  StackCheckLibCommonMsvc.c | CLANGPDB
+  StackCheckLibCommonGcc.c  | GCC | GCC
 
 [Sources.IA32]
   IA32/CheckCookieMsvc.nasm | MSFT
+  IA32/CheckCookieMsvc.nasm | CLANGPDB
 
 [Sources.X64]
   X64/CheckCookieMsvc.nasm | MSFT
+  X64/CheckCookieMsvc.nasm | CLANGPDB
 
 [Sources.IA32, Sources.X64]
-  IA32/StackCookieInterrupt.nasm
+  IA32/StackCookieInterrupt.nasm | CLANGPDB
 
 [Sources.AARCH64]
   AArch64/StackCookieInterrupt.S   |GCC
   AArch64/StackCookieInterrupt.asm |MSFT
+  AArch64/CheckCookieMsvc.S           | CLANGPDB
 
 [Packages]
   MdePkg/MdePkg.dec
-
-[LibraryClasses]
-  StackCheckFailureHookLib
 
 [FixedPcd]
   gEfiMdePkgTokenSpaceGuid.PcdStackCookieExceptionVector
@@ -50,3 +51,7 @@
   # the stack cookie variable has been optimized away, as it looks to GCC like the variable is not used, because
   # the compiler inserts the usage.
   GCC:*_*_*_CC_FLAGS = -fno-lto
+
+  CLANGPDB:*_*_*_CC_FLAGS = -fno-lto
+  #CLANGPDB:*_CLANGPDB_*_DLINK_FLAGS = /LTCG:OFF
+  #CLANGPDB:*_CLANGPDB_*_DLINK_FLAGS = /INCLUDE:CpuDeadLoop
