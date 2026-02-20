@@ -37,9 +37,6 @@
 [Packages]
   MdePkg/MdePkg.dec
 
-[FixedPcd]
-  gEfiMdePkgTokenSpaceGuid.PcdStackCookieExceptionVector
-
 [BuildOptions]
   # We cannot build the MSVC version with /GL (whole program optimization) because we run into linker error
   # LNK1237, which is a failure to link against a symbol from a library compiled with /GL. The whole program
@@ -51,7 +48,3 @@
   # the stack cookie variable has been optimized away, as it looks to GCC like the variable is not used, because
   # the compiler inserts the usage.
   GCC:*_*_*_CC_FLAGS = -fno-lto
-
-  CLANGPDB:*_*_*_CC_FLAGS = -fno-lto
-  #CLANGPDB:*_CLANGPDB_*_DLINK_FLAGS = /LTCG:OFF
-  #CLANGPDB:*_CLANGPDB_*_DLINK_FLAGS = /INCLUDE:CpuDeadLoop

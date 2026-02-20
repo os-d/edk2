@@ -330,7 +330,7 @@ DumpCpuContext (
 
   if (ExceptionType == STACK_CHECK_EXCEPTION_VECTOR) {
     InternalPrintMessage (
-      "\nStack Check Exception occurred at address 0x%016lx\n\n",
+      "\nStack Check Exception occurred at address 0x%08x\n\n",
       SystemContext.SystemContextIa32->Ecx
       );
   }

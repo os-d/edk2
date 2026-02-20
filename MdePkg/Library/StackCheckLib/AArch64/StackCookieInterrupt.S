@@ -5,10 +5,12 @@
 // SPDX-License-Identifier: BSD-2-Clause-Patent
 //------------------------------------------------------------------------------
 
+#include <Library/StackCheckLib.h>
+
     .text
 
 //------------------------------------------------------------------------------
-// Calls an interrupt using the vector specified by PcdStackCookieExceptionVector
+// Calls an interrupt using the stack cookie exception vector
 // and passes the ExceptionAddress through in x0.
 //
 // VOID
@@ -19,5 +21,5 @@
 //------------------------------------------------------------------------------
 .global ASM_PFX(TriggerStackCookieInterrupt)
 ASM_PFX(TriggerStackCookieInterrupt):
-    svc FixedPcdGet8 (PcdStackCookieExceptionVector)
+    svc STACK_CHECK_EXCEPTION_VECTOR
     ret

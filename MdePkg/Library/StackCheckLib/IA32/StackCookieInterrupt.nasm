@@ -5,6 +5,8 @@
 ; SPDX-License-Identifier: BSD-2-Clause-Patent
 ;------------------------------------------------------------------------------
 
+#include <Library/StackCheckLib.h>
+
     DEFAULT REL
     SECTION .text
 
@@ -22,5 +24,5 @@
 global ASM_PFX(TriggerStackCookieInterrupt)
 ASM_PFX(TriggerStackCookieInterrupt):
     mov     ecx, [esp + 4]                              ; first parameter, skipping return address
-    int     FixedPcdGet8 (PcdStackCookieExceptionVector)
+    int     STACK_CHECK_EXCEPTION_VECTOR
     ret

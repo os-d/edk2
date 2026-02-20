@@ -105,7 +105,11 @@ EFI_GET_PCD_INFO_PROTOCOL  mEfiGetPcdInfoInstance = {
 EFI_HANDLE  mPcdHandle      = NULL;
 UINTN       mVpdBaseAddress = 0;
 
+#if defined (__GNUC__) || defined (__clang__)
 __attribute__ ((noinline))
+#else
+__declspec(noinline)
+#endif
 VOID
 LetsCorrupt (
   VOID

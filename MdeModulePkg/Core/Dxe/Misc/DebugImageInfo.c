@@ -17,7 +17,9 @@ EFI_DEBUG_IMAGE_INFO_TABLE_HEADER  mDebugInfoTableHeader = {
 
 UINTN  mMaxTableEntries = 0;
 
+#if defined (__GNUC__) || defined (__clang__)
 __attribute__ ((used))
+#endif
 EFI_SYSTEM_TABLE_POINTER  *mDebugTable = NULL;
 
 #define EFI_DEBUG_TABLE_ENTRY_SIZE  (sizeof (VOID *))

@@ -326,7 +326,11 @@ EFI_PEI_NOTIFY_DESCRIPTOR  mEndOfPeiSignalPpiNotifyList[] = {
   }
 };
 
+#if defined (__GNUC__) || defined (__clang__)
 __attribute__ ((noinline))
+#else
+__declspec(noinline)
+#endif
 VOID
 LetsCorrupt (
   VOID

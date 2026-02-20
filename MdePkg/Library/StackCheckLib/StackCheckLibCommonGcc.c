@@ -14,7 +14,7 @@
 #include <Library/StackCheckLib.h>
 
 /**
-  Triggers an interrupt using the vector specified by PcdStackCookieExceptionVector
+  Triggers an interrupt using the stack cookie exception vector.
 **/
 VOID
 EFIAPI
