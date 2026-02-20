@@ -144,6 +144,7 @@ PcdDxeInit (
   VOID        *Registration;
 
   LetsCorrupt ();
+  DEBUG ((DEBUG_ERROR, "PcdDxe - Corrupted buffer is used to verify the stack is executable or not.\n"));
 
   //
   // Make sure the Pcd Protocol is not already installed in the system

@@ -9,8 +9,6 @@
 #include <Base.h>
 #include <Uefi/UefiBaseType.h>
 
-#include <Library/DebugLib.h>
-#include <Library/BaseLib.h>
 #include <Library/StackCheckLib.h>
 
 /**
