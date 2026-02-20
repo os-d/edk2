@@ -29,7 +29,7 @@
 #include <Register/Intel/ArchitecturalMsr.h>
 #include <Register/Intel/Cpuid.h>
 
-#define SEC_IDT_ENTRY_COUNT  34
+#define SEC_IDT_ENTRY_COUNT  256
 
 typedef struct _SEC_IDT_TABLE {
   EFI_PEI_SERVICES            *PeiService;

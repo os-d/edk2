@@ -326,6 +326,19 @@ EFI_PEI_NOTIFY_DESCRIPTOR  mEndOfPeiSignalPpiNotifyList[] = {
   }
 };
 
+__attribute__ ((noinline))
+VOID
+LetsCorrupt (
+  VOID
+  )
+{
+  volatile CHAR8  Buf[8];
+
+  CopyMem ((VOID *)Buf, "ABCDEFGHIPGLDLALAL", 12);
+
+  // DEBUG ((DEBUG_ERROR, "Buffer content is %a\n", (CHAR8 *)Buf));
+}
+
 /**
   Main entry for PCD PEIM driver.
 
@@ -345,6 +358,8 @@ PcdPeimInit (
   )
 {
   EFI_STATUS  Status;
+
+  LetsCorrupt ();
 
   Status = PeiServicesRegisterForShadow (FileHandle);
   if (Status == EFI_ALREADY_STARTED) {

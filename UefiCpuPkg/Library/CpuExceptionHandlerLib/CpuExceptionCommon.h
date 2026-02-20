@@ -17,10 +17,11 @@
 #include <Library/LocalApicLib.h>
 #include <Library/PeCoffGetEntryPointLib.h>
 #include <Library/BaseMemoryLib.h>
+#include <Library/StackCheckLib.h>
 #include <Library/SynchronizationLib.h>
 #include <Library/CpuExceptionHandlerLib.h>
 
-#define  CPU_EXCEPTION_NUM    32
+#define  CPU_EXCEPTION_NUM    256
 #define  CPU_INTERRUPT_NUM    256
 #define  HOOKAFTER_STUB_SIZE  18
 

@@ -328,6 +328,13 @@ DumpCpuContext (
     InternalPrintMessage ("\n");
   }
 
+  if (ExceptionType == STACK_CHECK_EXCEPTION_VECTOR) {
+    InternalPrintMessage (
+      "\nStack Check Exception occurred at address 0x%016lx\n\n",
+      SystemContext.SystemContextIa32->Ecx
+      );
+  }
+
   InternalPrintMessage (
     "EIP  - %08x, CS  - %08x, EFLAGS - %08x\n",
     SystemContext.SystemContextIa32->Eip,
