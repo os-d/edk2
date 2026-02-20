@@ -135,7 +135,7 @@
 !endif
 
 [LibraryClasses.common.DXE_CORE]
-  #DebugAgentLib|DebuggerFeaturePkg/Library/DebugAgent/DebugAgentDxe.inf
+  # DebugAgentLib|DebuggerFeaturePkg/Library/DebugAgent/DebugAgentDxe.inf
 
 [LibraryClasses.common.UEFI_DRIVER]
   UefiScsiLib|MdePkg/Library/UefiScsiLib/UefiScsiLib.inf
@@ -172,7 +172,7 @@
 
 [PcdsFixedAtBuild.common]
   gUefiOvmfPkgTokenSpaceGuid.PcdOvmfFdBaseAddress|0x00000000
-  #DebuggerFeaturePkgTokenSpaceGuid.PcdForceEnableDebugger|FALSE
+  # DebuggerFeaturePkgTokenSpaceGuid.PcdForceEnableDebugger|FALSE
   gUefiOvmfPkgTokenSpaceGuid.PcdOvmfFirmwareFdSize|$(FD_SIZE)
 
   gArmPlatformTokenSpaceGuid.PcdCPUCoresStackBase|0x4007c000

@@ -33,5 +33,5 @@ StackCheckFailure (
   VOID  *ActualCookieValue
   )
 {
-  TriggerStackCookieInterrupt ((EFI_PHYSICAL_ADDRESS)RETURN_ADDRESS (0));
+  TriggerStackCookieInterrupt ((EFI_PHYSICAL_ADDRESS)(UINTN)RETURN_ADDRESS (0));
 }

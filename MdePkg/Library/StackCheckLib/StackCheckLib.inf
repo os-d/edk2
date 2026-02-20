@@ -21,14 +21,12 @@
 [Sources.IA32]
   IA32/CheckCookieMsvc.nasm | MSFT
   IA32/CheckCookieMsvc.nasm | CLANGPDB
-  IA32/StackCookieInterrupt.nasm | MSFT
-  IA32/StackCookieInterrupt.nasm | CLANGPDB
+  IA32/StackCookieInterrupt.nasm
 
 [Sources.X64]
   X64/CheckCookieMsvc.nasm | MSFT
   X64/CheckCookieMsvc.nasm | CLANGPDB
-  X64/StackCookieInterrupt.nasm | MSFT
-  X64/StackCookieInterrupt.nasm | CLANGPDB
+  X64/StackCookieInterrupt.nasm
 
 [Sources.AARCH64]
   AArch64/StackCookieInterrupt.S   | GCC
