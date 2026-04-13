@@ -526,7 +526,8 @@ typedef struct {
 //
 //  Definitions for Set Session Privelege Level command
 //
-#define IPMI_APP_SET_SESSION_PRIVELEGE_LEVEL  0x3B
+#define IPMI_APP_SET_SESSION_PRIVILEGE_LEVEL  0x3B
+#define IPMI_APP_SET_SESSION_PRIVELEGE_LEVEL  IPMI_APP_SET_SESSION_PRIVILEGE_LEVEL
 
 //
 //  Constants and Structure definitions for "Set Session Privelege Level" command to follow here
