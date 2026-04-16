@@ -174,9 +174,35 @@
 
     ## options defined ci/Plugin/SpellCheck
     "SpellCheck": {
-        "AuditOnly": True,           # Fails test but run in AuditOnly mode to collect log
-        "IgnoreFiles": [],           # use gitignore syntax to ignore errors in matching files
-        "ExtendWords": [],           # words to extend to the dictionary for this package
+        "AuditOnly": False,           # Fails test but run in AuditOnly mode to collect log
+        "IgnoreFiles": [
+            "Library/BaseFdtLib/libfdt/**",    # submodule outside of our control
+            "Library/JedecJep106Lib/**",        # JEDEC vendor name data
+            "Library/MipiSysTLib/mipisyst/**",  # submodule outside of our control
+            "Library/MipiSysTLib/mipi_syst.h"   # generated from mipisyst submodule
+            ],                       # use gitignore syntax to ignore errors in matching files
+        "ExtendWords": [             # words to extend to the dictionary for this package
+            # Deprecated backward-compatible aliases for old misspelled
+            # identifiers that will be removed.
+            "ahthentication",   # NVME_RPMB_RESULT_AHTHENTICATION_FAILURE (Nvme.h)
+            "algortihm",        # EFI_HASH_ALGORTIHM_MD5_GUID (Hash.h)
+            "cachable",         # EFI_TPM2_ACPI_TABLE_ARM_FFA_PARAMETER_ATTR_MEM_TYPE_NOT_CACHABLE (Tpm2Acpi.h)
+            "capablity",        # EFI_ACPI_EXTENDED_INTERRUPT_FLAG_WAKE_CAPABLITY_MASK (Acpi10.h)
+            "capbility",        # PCI_CAPBILITY_POINTER_OFFSET (Pci22.h)
+            "commaond",         # EFI_DMA_FAULT_REASON_INVALID_COMMAOND (Cper.h)
+            "commond",          # EFI_SCSI_IO_STATUS_TARGET_COMMOND_TERMINATED (ScsiIo.h)
+            "egres",            # PCI_EXPRESS_..._GET_EGRES_CONTROL/VECTOR_SIZE (PciExpress21.h)
+            "extented",         # CXL_CM_EXTENTED_REGISTER_CAPABILITY/RANGES_BITMAP (Cxl30.h)
+            "implemenation",    # UdfImplemenationUseVolumeDescriptor (Udf.h)
+            "interal",          # TPM_DELEGATE_OwnerReadInteralPub (Tpm12.h)
+            "managment",        # EventLogVariableMutliEventSysManagmentType (SmBios.h)
+            "perormance",       # EFI_DRIVER_CONFIGURATION_PERORMANCE_DEFAULTS (DriverConfiguration2.h)
+            "privelege",        # IPMI_APP_SET_SESSION_PRIVELEGE_LEVEL (IpmiNetFnApp.h)
+            "progreessive",     # EFI_IMAGE_JPEG_SCANTYPE_PROGREESSIVE (HiiImageDecoder.h)
+            "reponse",          # OPAL_MIN_MAX_REPONSE_COM_PACKET_SIZE (TcgStorageOpal.h)
+            "researved",        # ResearvedMechanism (TcgStorageOpal.h)
+            "unownered"         # TCG_PHYSICAL_PRESENCE_DEFERRED_PP_UNOWNERED_FIELD_UPGRADE (TcgPhysicalPresence.h)
+        ],
         "IgnoreStandardPaths": [],   # Standard Plugin defined paths that should be ignore
         "AdditionalIncludePaths": [] # Additional paths to spell check (wildcards supported)
     },
