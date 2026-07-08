@@ -28,6 +28,7 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 #include <Library/BaseLib.h>
 #include <Library/BaseMemoryLib.h>
 #include <Library/MemoryAllocationLib.h>
+#include <Library/SafeIntLib.h>
 #include <Library/UefiBootServicesTableLib.h>
 #include <Library/DxeServicesTableLib.h>
 #include <Library/DebugLib.h>
@@ -62,13 +63,20 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 #define PREVIOUS_MEMORY_DESCRIPTOR(MemoryDescriptor, Size) \
   ((EFI_MEMORY_DESCRIPTOR *)((UINT8 *)(MemoryDescriptor) - (Size)))
 
-UINT32  mImageProtectionPolicy;
+static UINT32   mImageProtectionPolicy;
+static BOOLEAN  mIsCompatibilityModeActive = FALSE;
+static BOOLEAN  mSettingAttributes         = FALSE;
 
 extern LIST_ENTRY  mGcdMemorySpaceMap;
 
 STATIC LIST_ENTRY  mProtectedImageRecordList;
 
 EFI_MEMORY_ATTRIBUTE_PROTOCOL  *gMemoryAttributeProtocol;
+
+VOID
+MapLegacyBiosMemoryRWX (
+  VOID
+  );
 
 /**
   Get the image type.
@@ -135,6 +143,18 @@ GetProtectionPolicyFromImageType (
   } else {
     return PROTECT_IF_ALIGNED_ELSE_ALLOW;
   }
+}
+
+/**
+  Returns TRUE if ActivateCompatibilityMode() has been called.
+**/
+static
+BOOLEAN
+IsCompatibilityModeActive (
+  VOID
+  )
+{
+  return mIsCompatibilityModeActive;
 }
 
 /**
@@ -614,6 +634,74 @@ DisableNullDetectionAtTheEndOfDxe (
   DisableNullDetection ();
   CoreCloseEvent (Event);
   return;
+}
+
+/**
+  Uninstalls the Memory Attribute Protocol from all handles.
+**/
+VOID
+EFIAPI
+UninstallMemoryAttributeProtocol (
+  VOID
+  )
+{
+  EFI_STATUS  Status;
+  UINTN       HandleCount;
+  UINTN       Index;
+  EFI_HANDLE  *HandleBuffer;
+
+  if (gMemoryAttributeProtocol == NULL) {
+    Status = gBS->LocateProtocol (&gEfiMemoryAttributeProtocolGuid, NULL, (VOID **)&gMemoryAttributeProtocol);
+    if (EFI_ERROR (Status)) {
+      return;
+    }
+  }
+
+  Status = gBS->LocateHandleBuffer (
+                  ByProtocol,
+                  &gEfiMemoryAttributeProtocolGuid,
+                  NULL,
+                  &HandleCount,
+                  &HandleBuffer
+                  );
+
+  if (!EFI_ERROR (Status)) {
+    for (Index = 0; Index < HandleCount; Index++) {
+      Status = gBS->UninstallProtocolInterface (
+                      HandleBuffer[Index],
+                      &gEfiMemoryAttributeProtocolGuid,
+                      gMemoryAttributeProtocol
+                      );
+      DEBUG ((DEBUG_INFO, "%a - Uninstalling Memory Attribute Protocol from handle %p - %r\n", __func__, HandleBuffer[Index], Status));
+      ASSERT_EFI_ERROR (Status);
+    }
+  }
+
+  if (HandleBuffer != NULL) {
+    FreePool (HandleBuffer);
+  }
+}
+
+/**
+  Activate compatibility mode to disable memory protections for non-NX_COMPAT EFI_APPLICATIONS.
+**/
+VOID
+EFIAPI
+ActivateCompatibilityMode (
+  VOID
+  )
+{
+  if (mIsCompatibilityModeActive) {
+    return;
+  }
+
+  DEBUG ((DEBUG_WARN, "%a - Activating Memory Protection Compatibility Mode!\n", __func__));
+
+  mIsCompatibilityModeActive = TRUE;
+  DisableNullDetection ();
+  UninstallMemoryAttributeProtocol ();
+  MapLegacyBiosMemoryRWX ();
+  CoreNotifySignalList (&gCompatibilityModeActivatedEventGuid);
 }
 
 /**
